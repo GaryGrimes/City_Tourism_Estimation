@@ -6,3 +6,5 @@ This is version 2.0 of city tourism estimation project
 Add more changes
 
 Add newly merged change, test
+
+test to add tags
