@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-This script is to generate agent and network data for optimal tour (TTDP) solver.
-@author: Kai Shen
-Last modified on Nov. 15
+This script is to generate agent and network data for optimal tour (TTDP) solver. Last modified on Nov. 15.
+因为simulation的结果也是不计算intrazonal movements的，所以在仿真系统内的Data来说，统一将不考虑TAZ内trips，
+并且将这些trips合并到前一个inter-zonal的trip。 Last modified on Dec. 22.
 """
 import pandas as pd
 import os
@@ -10,12 +10,6 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 import progressbar as pb
-from wordcloud import WordCloud
-from matplotlib import rcParams
-
-rcParams['font.family'] = 'sans-serif'
-rcParams['font.sans-serif'] = ['Hiragino Maru Gothic Pro', 'Yu Gothic', 'Meirio', 'Takao', 'IPAexGothic', 'IPAPGothic',
-                               'Noto Sans CJK JP']
 
 
 class Tourist(object):
@@ -100,12 +94,6 @@ def get_trip_chain(index):  # get trip info. for a specific tourist
     except NameError:
         print('Please make sure OD_data exists in the variable list')
         return None
-
-
-def comp_extractor(_arr):
-    for x in _arr:
-        _row, _col = x // 10 - 1, x % 10 - 1
-        yield comp_options[_row][_col]
 
 
 # %% DATA PREPARATION
@@ -206,48 +194,6 @@ while not NoUpdate:
     itr += 1
     if NoUpdate:
         print('Travel distance update complete.')
-
-# %% complaints and dissatisfaction
-comp_freq_table = OD_data.loc[:, '不満点１':'不満点６'].values
-temp = comp_freq_table.flatten()
-comp_fre_array = temp[temp > 0]
-
-y = np.bincount(comp_fre_array)
-ii = np.nonzero(y)[0]
-
-com_fre = list(zip(ii, y[ii]))
-
-comp_options = [
-    ['道路が混雑', '経路がわかりにくい', '道路が細い', '駐車場', '駐車の待ち時間', '駐車代'],
-    ['バスの本数', '運賃', '道路が混雑', '乗り換え', 'バスの選択', 'バス停わかりにくい', 'バス運転', '車内で混雑'],
-    ['電車の本数', '鉄道運賃', '乗り換え', '駅のバリアフリー', '駅がわからない', '電車内で混雑', '車内で混雑', '乗り換えが面倒']
-]
-
-g = comp_extractor(comp_fre_array)
-
-
-with open(os.path.join(os.path.dirname(__file__), 'Database', 'comp_output.txt'), 'w') as f:
-    for x in g:
-        f.write(str(x) + ' ')
-
-with open(os.path.join(os.path.dirname(__file__), 'Database', 'comp_output.txt'), 'r') as f:
-    word_text = f.read()
-
-# create word-cloud
-font_path = "/System/Library/fonts/NotoSansCJKjp-Regular.otf"
-wordcloud = WordCloud(font_path=font_path, regexp="[\w']+", background_color=None, mode='RGBA', scale=2,
-                      colormap='magma')
-wordcloud.generate(word_text)
-
-# plot
-plt.figure(figsize=(20, 10))
-plt.imshow(wordcloud, interpolation='bilinear')
-
-plt.axis("off")
-plt.tight_layout(pad=0)
-plt.show()
-
-# similarly, bus one-day bus 不使用的理由之类的, 也可以同样做一个wordcloud.
 
 # %% for each tourist (agent), generate an instance of the class
 toursit_index = ENQ2006['ナンバリング'].values
@@ -377,6 +323,8 @@ if flag:
     for _idx, Uid in enumerate(toursit_index):
         p.update(int((_idx / (total - 1)) * 100))
 
+        # Caution: get_trip_chain method will merge a trip with identical od to its previous trip.
+        # Accordingly, the # of instances in trip databse is fewer than the OD data.
         temp_df = get_trip_chain(Uid)
         try:
             # enumerate all trips
