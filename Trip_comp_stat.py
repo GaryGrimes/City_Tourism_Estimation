@@ -153,3 +153,22 @@ if __name__ == '__main__':
             fare_comp_mat[trip_od[_idx][0], trip_od[_idx][1]] += 1
         except IndexError:
             continue
+
+    # write data?
+    flag_write = input("Write complaints data to excel? Press 'Enter' to skip, any key to continue.")
+    if flag_write:
+        temp_df = pd.DataFrame(congestion_comp_mat)
+        temp_df.to_excel('Project Database/Complaints statistics/congestion complaints.xlsx',
+                         sheet_name='congestion')
+
+        temp_df = pd.DataFrame(c_congestion_comp_mat)
+        temp_df.to_excel('Project Database/Complaints statistics/cabin congestion complaints.xlsx',
+                         sheet_name='c_congestion')
+
+        temp_df = pd.DataFrame(line_freq_comp_mat)
+        temp_df.to_excel('Project Database/Complaints statistics/line freq complaints.xlsx',
+                         sheet_name='line_freq')
+
+        temp_df = pd.DataFrame(fare_comp_mat)
+        temp_df.to_excel('Project Database/Complaints statistics/fare complaints.xlsx',
+                         sheet_name='fare')
