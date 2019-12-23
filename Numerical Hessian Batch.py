@@ -1,9 +1,15 @@
 import numpy as np
 import numdifftools as nd
+import sympy
+import os
+import pickle
+import slvr.SimDataProcessing as sim_data
+import pandas as pd
+import math
+import multiprocessing as mp
+from SolverUtility_ILS import SolverUtility
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-import sympy
-import slvr.PntyEvalFun_Batch as pf
 
 
 class Tourist(object):
@@ -46,7 +52,55 @@ def f_2(beta, loc):
     return (f_1(_left, d_1)[0] - f_1(beta, d_1)[0]) / -_epsilon[d_2]  # 取前差分算
 
 
-# # 新建一个画布
+# split the arr into N chunks
+def chunks(arr, m):
+    n = int(math.ceil(len(arr) / float(m)))
+    return [arr[_:_ + n] for _ in range(0, len(arr), n)]
+
+
+def eval_fun(s):
+    # divide population into chunks to initiate multi-processing.
+    n_cores = mp.cpu_count()
+    pop = chunks(agent_database, n_cores)
+    # for i in pop:
+    #     print(len(i))  # 尽可能平均
+
+    jobs = []
+    penalty_queue = mp.Queue()  # queue, to save results for multi_processing
+
+    # start process
+
+    for idx, chunk in enumerate(pop):
+        alpha = list(s[:2])
+        beta = [5] + list(s[2:])
+        data_input = {'alpha': alpha, 'beta': beta,
+                      'phi': phi,
+                      'util_matrix': utility_matrix,
+                      'time_matrix': edge_time_matrix,
+                      'cost_matrix': edge_cost_matrix,
+                      'dwell_matrix': dwell_vector,
+                      'dist_matrix': edge_distance_matrix}
+
+        process = mp.Process(target=SolverUtility.solver, args=(penalty_queue, idx, node_num, chunk),
+                             kwargs=data_input, name='P{}'.format(idx + 1))
+        jobs.append(process)
+        process.start()
+
+    for j in jobs:
+        # wait for processes to complete and join them
+        j.join()
+
+    # retrieve parameter penalties from queue
+    penalty_total = 0
+    while True:
+        if penalty_queue.empty():  # 如果队列空了，就退出循环
+            break
+        else:
+            penalty_total += penalty_queue.get()[1]  # 0是index，1才是data
+    return penalty_total  # unit transformed from km to m
+
+
+# %% simple example illustration
 # figure = plt.figure()
 # # 新建一个3d绘图对象
 # ax = Axes3D(figure)
@@ -112,24 +166,38 @@ if __name__ == '__main__':
 
     print('t value: {}'.format(np.array(B_star) / std_err))
 
-    # print('点(1,2)处的二阶导dx2： ', f_2([1, 2], [0, 0]))
-    #
-    # print('点(3,5)处的二阶导： ', f_2([3, 5], [0, 0]))
-    # print('点(0,0)处的二阶导： ', f_2([0, 0], [0, 0]))
-
     # ---------------------------- print results  ------------------------- #
     print('\nNumerical Gradients and Hessian using Numdifftools: \n')
 
     print('The gradient of f(x,y) to x and y: {}\n'.format(nd.Gradient(f)(B_star)))
     print('The Hessian (second derivative) matrix:\n {}'.format(nd.Hessian(f)(B_star)))
 
+    # %% simulation data processing
+    # load agents
+    print('Setting up agents...')
+    agent_database = sim_data.agent_database
+
+    # %% setting up nodes
+    node_num = sim_data.node_num  # Number of attractions. Origin and destination are excluded.
+
+    utility_matrix = sim_data.utility_matrix
+    dwell_vector = sim_data.dwell_vector
+
+    # %% edge property
+    edge_time_matrix = sim_data.edge_time_matrix
+
+    # Edge travel cost (fare)
+    edge_cost_matrix = sim_data.edge_cost_matrix
+
+    # Edge travel distance. distance matrix for path penalty evaluation
+    edge_distance_matrix = sim_data.edge_distance_matrix  # distance between attraction areas
+
+    # %% parameter setup
+    phi = sim_data.phi
+    # %% Numerical Hessian using nmdf tools with beta *
+
     # numerical gradient using * parameter
     s = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
 
-    res_Grad = nd.Gradient(pf.eval_fun)(s)
-    res_Hessian = nd.Hessian(pf.eval_fun)(s)
-
-
-    # # res_test = pf.eval_fun(s)
-    # # print('The score of parameter of {}: {}'.format(s, res_test))
-    # res_test = pf.eval_fun([0, 0, 0, 0])
+    res_Grad = nd.Gradient(eval_fun)(s)
+    res_Hessian = nd.Hessian(eval_fun)(s)

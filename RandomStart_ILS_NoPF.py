@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from slvr.SolverUtility_ILS import SolverUtility
 import multiprocessing as mp
 import progressbar as pb
+import slvr.SimDataProcessing as sim_data
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
@@ -66,101 +67,33 @@ def score2penalty(*args):
 if __name__ == '__main__':
     # %% Solver Setup
     # load agents
-    with open(os.path.join(os.path.dirname(__file__), 'Database', 'transit_user_database.pickle'), 'rb') as file:
-        agent_database = pickle.load(file)
-
     print('Setting up agents...')
+    agent_database = sim_data.agent_database
 
     # %% setting up nodes
-    node_num = 37  # Number of attractions. Origin and destination are excluded.
+    node_num = sim_data.node_num  # Number of attractions. Origin and destination are excluded.
 
-    Intrinsic_utilities = pd.read_excel(os.path.join(os.path.dirname(__file__), 'Database', 'Intrinsic Utility.xlsx'),
-                                        sheet_name='data')
-    utility_matrix = []
-    for _idx in range(Intrinsic_utilities.shape[0]):
-        temp = np.around(list(Intrinsic_utilities.iloc[_idx, 1:4]), decimals=3)
-        utility_matrix.append(temp)
-    utility_matrix = np.array(utility_matrix)
-
-    Dwell_time = pd.read_excel(os.path.join(os.path.dirname(__file__), 'Database', 'Dwell time array.xlsx'),
-                               index_col=0)
-    # replace missing values by average of all samples
-    Dwell_time.loc[35, 'mean'] = Dwell_time['mean'][Dwell_time['mean'] != 5].mean()  # Attraction 35
-    dwell_vector = np.array(Dwell_time['mean'])
+    utility_matrix = sim_data.utility_matrix
+    dwell_vector = sim_data.dwell_vector
 
     # %% edge property
-    Edge_time_matrix = pd.read_excel(
-        os.path.join(os.path.dirname(__file__), 'Database', 'Trips', 'Final', 'transit_time_update2.xlsx'), index_col=0)
-
-    edge_time_matrix = np.array(Edge_time_matrix)
-
-    # Edge travel time
-    # need several iterations to make sure direct travel is shorter than any detour
-
-    no_update, itr = 0, 0
-    print('Starting travel_time_check...')
-    for _ in range(3):
-        while not no_update:
-            print('Current iteration: {}'.format(itr + 1))
-            no_update = 1
-            for i in range(edge_time_matrix.shape[0] - 1):
-                for j in range(i + 1, edge_time_matrix.shape[0]):
-                    time = edge_time_matrix[i, j]
-                    shortest_node, shortest_time = 0, time
-                    for k in range(edge_time_matrix.shape[0]):
-                        if edge_time_matrix[i, k] + edge_time_matrix[k, j] < shortest_time:
-                            shortest_node, shortest_time = k, edge_time_matrix[i, k] + edge_time_matrix[k, j]
-                    if shortest_time < time:
-                        no_update = 0
-                        # print('travel time error between {0} and {1}, \
-                        # shortest path is {0}-{2}-{1}'.format(i, j, shortest_node))
-                        edge_time_matrix[j, i] = edge_time_matrix[i, j] = shortest_time
-            itr += 1
-            if no_update:
-                print('Travel time update complete.\n')
+    edge_time_matrix = sim_data.edge_time_matrix
 
     # Edge travel cost (fare)
-    Edge_cost_matrix = pd.read_csv(
-        os.path.join(os.path.dirname(__file__), 'Database', 'Trips', 'Final', 'wide_transit_fare_matrix.csv'),
-        index_col=0)
-    # Edge travel distance
-    Edge_distance_matrix = pd.read_excel(
-        os.path.join(os.path.dirname(__file__), 'Database', 'Trips', 'Final', 'driving_wide_distance_matrix.xlsx'),
-        index_col=0)
+    edge_cost_matrix = sim_data.edge_cost_matrix
 
-    edge_cost_matrix = np.array(Edge_cost_matrix)
-    # distance matrix for path penalty evaluation
-    edge_distance_matrix = np.array(Edge_distance_matrix)  # distance between attraction areas
+    # Edge travel distance. distance matrix for path penalty evaluation
+    edge_distance_matrix = sim_data.edge_distance_matrix  # distance between attraction areas
 
-    #  check UtilMatrix等各个matrix的shape是否正确。与NodeNum相符合
-    if len(utility_matrix) != node_num:
-        raise ValueError('Utility matrix error.')
-    if edge_time_matrix.shape[0] != edge_time_matrix.shape[1]:
-        raise ValueError('Time matrix error.')
-    if edge_cost_matrix.shape[0] != edge_cost_matrix.shape[1]:
-        raise ValueError('Cost matrix error.')
-    if len(dwell_vector) != node_num:
-        raise ValueError('Dwell time array error.')
+    # %% parameter setup
+    phi = sim_data.phi
 
-    # %% load agents
-
-    print('Setting up solver.')
-    # parameter setup
-    phi = 0.1
-
+    # %% starting evaluation
     core_process = mp.cpu_count()  # species size (each individual is our parameters here)
     itv = [0.01, 0.03, 0.1, 0.3, 1, 3, 10]
     size_itv = len(itv)
     # create parameter columns
 
-    """ 不用下面这么麻烦啦
-    beta4_col = [0.01, 0.03, 0.1, 0.3, 1, 3, 10] * size_itv ** 3
-    beta3_col = ([0.01] * 7 + [0.03] * 7 + [0.1] * 7 + [0.3] * 7 + [1] * 7 + [3] * 7 + [10] * 7) * 7 ** 2
-    beta2_col = ([0.01] * 7 ** 2 + [0.03] * 7 ** 2 + [0.1] * 7 ** 2 + [0.3] * 7 ** 2 + [1] * 7 ** 2 + [3] * 7 ** 2 + [
-        10] * 7 ** 2) * 7
-    beta1_col = ([0.01] * 7 ** 3 + [0.03] * 7 ** 3 + [0.1] * 7 ** 3 + [0.3] * 7 ** 3 + [1] * 7 ** 3 + [3] * 7 ** 3 + [
-        10] * 7 ** 3) * 7
-    """
     # create initial values of parameters
     # 聪明的操作
     indices = [[(i // size_itv ** 3) % 7, (i // size_itv ** 2) % 7, (i // size_itv) % 7, i % 7] for i in
@@ -218,7 +151,8 @@ if __name__ == '__main__':
                           'dwell_matrix': dwell_vector,
                           'dist_matrix': edge_distance_matrix}
             # start process
-            process = mp.Process(target=SolverUtility.solver_LD_noPF, args=(penalty_queue, idx, node_num, agent_database),
+            process = mp.Process(target=SolverUtility.solver_LD_noPF,
+                                 args=(penalty_queue, idx, node_num, agent_database),
                                  kwargs=data_input, name='P{}'.format(idx + 1))
             jobs.append(process)
             process.start()
@@ -268,15 +202,8 @@ if __name__ == '__main__':
         del Population[:core_process]
         # todo 计算还剩下多少parameter需要计算，当前的进度（%)，预估时间
 
-
     p.finish()
 
-    # %% output not evaluated pops
-    to_be_evaluated = pd.DataFrame(columns=['index', 'a1', 'a2', 'b2', 'b3'])
-    to_be_evaluated['index'] = range(len(Pop_save), 2401)
-    to_be_evaluated.loc[:, 'a1':'b3'] = Population
-
-    to_be_evaluated.to_excel('Pops to be evaluated.xlsx')
     # %% save results into DF
     Population = [[itv[indices[j][i]] for i in range(4)] for j in range(len(indices))]
     Res = pd.DataFrame(columns=['index', 'a1', 'a2', 'b2', 'b3', 'penalty', 'score'])
