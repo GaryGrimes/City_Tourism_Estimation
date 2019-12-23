@@ -4,12 +4,17 @@ This script is to generate statistics for observed visit and trip frequency.
 Also used to evaluate the simualtion results .
 Last modified on Dec. 18
 """
+
 import pandas as pd
 import os
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 import slvr.SimDataProcessing as sim_data
+from SolverUtility_ILS import SolverUtility
+import multiprocessing as mp
+import math
+import datetime
 import progressbar as pb
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
@@ -64,90 +69,191 @@ def change_fare(target: tuple) -> None:
     pass
 
 
-def evaluation(_beta, _itr):
-    """Evaluation of each set of parameters using MultiProcessing"""
-    global phi, utility_matrix, dwell_vector, edge_time_matrix, edge_cost_matrix, edge_distance_matrix
+# split the arr into N chunks
+def chunks(arr, m):
+    n = int(math.ceil(len(arr) / float(m)))
+    return [arr[_:_ + n] for _ in range(0, len(arr), n)]
 
-    print('------ Iteration {} ------\n'.format(_itr + 1))
+
+def eval_fun(para):
+    # divide population into chunks to initiate multi-processing.
+    n_cores = mp.cpu_count()
+    pop = chunks(agent_database, n_cores)
+    # for i in pop:
+    #     print(len(i))  # 尽可能平均
 
     jobs = []
     penalty_queue = mp.Queue()  # queue, to save results for multi_processing
 
-    # calculate evaluation time
-    start_time = datetime.datetime.now()
+    # start process
 
-    # evaluation with MultiProcessing for each parameter in current generation
-    for idx, parameter in enumerate(_s):
-        print('\nStarting process {} in {}'.format(idx + 1, len(_s)))
-        parameter = parameter.tolist()  # convert to list
-        # check existence of parameter in memory
-        if parameter in memo_parameter:
-            # sent back penalty tuple if exists in history
-            penalty_queue.put((idx, memo_penalty[memo_parameter.index(parameter)]))
-            print('\nThe {}th parameter is sent from history (with index {}), with score: {}'.format(
-                idx, memo_parameter.index(parameter), memo_penalty[memo_parameter.index(parameter)]))
-        else:
-            ALPHA = list(parameter[:2])
-            BETA = [5] + list(parameter[2:])
-            data_input = {'alpha': ALPHA, 'beta': BETA,
-                          'phi': phi,
-                          'util_matrix': utility_matrix,
-                          'time_matrix': edge_time_matrix,
-                          'cost_matrix': edge_cost_matrix,
-                          'dwell_matrix': dwell_vector,
-                          'dist_matrix': edge_distance_matrix}
+    for idx, chunk in enumerate(pop):
+        _alpha = list(para[:2])
+        _beta = [5] + list(para[2:])
+        data_input = {'alpha': _alpha, 'beta': _beta,
+                      'phi': phi,
+                      'util_matrix': utility_matrix,
+                      'time_matrix': edge_time_matrix,
+                      'cost_matrix': edge_cost_matrix,
+                      'dwell_matrix': dwell_vector,
+                      'dist_matrix': edge_distance_matrix}
 
-            # start process
-            process = mp.Process(target=SolverUtility.solver, args=(penalty_queue, idx, node_num, agent_database),
-                                 kwargs=data_input, name='P{}'.format(idx + 1))
-            jobs.append(process)
-            process.start()
+        process = mp.Process(target=SolverUtility.solver, args=(penalty_queue, idx, node_num, chunk),
+                             kwargs=data_input, name='P{}'.format(idx + 1))
+        jobs.append(process)
+        process.start()
 
-    for _j in jobs:
+    for j in jobs:
         # wait for processes to complete and join them
-        _j.join()
-
-    # collect end time
-    end_time = datetime.datetime.now()
-    print('\n------ Evaluation time for current iteration: {}s ------\n'.format((end_time - start_time).seconds))
+        j.join()
 
     # retrieve parameter penalties from queue
-    para_penalties_tuples = []
+    penalty_total = 0
     while True:
         if penalty_queue.empty():  # 如果队列空了，就退出循环
             break
         else:
-            para_penalties_tuples.append(penalty_queue.get())
+            penalty_total += penalty_queue.get()[1]  # 0是index，1才是data
+    return penalty_total  # unit transformed from km to m
 
-    para_penalties = []
-    # sort the retrieved penalties so that it has a same order with the original parameter set 's'
-    for _i in range(len(_s)):
-        for _tuple in para_penalties_tuples:
-            if _i == _tuple[0]:
-                para_penalties.append(_tuple[1])  # Caution! 目前传回的tuple[1]是一个dict!!!
-                break
 
-    memo_parameter.extend(_s.tolist())
-    memo_penalty.extend(para_penalties)
+def eval_fun_null(beta):
+    # todo preference也去掉。重新定义solver.
+    # divide population into chunks to initiate multi-processing.
+    n_cores = mp.cpu_count()
+    pop = chunks(agent_database, n_cores)
+    # for i in pop:
+    #     print(len(i))  # 尽可能平均
 
-    PARAMETER[_itr] = _s  # save parameters of each iteration into the PARAMETER dict.
+    jobs = []
+    penalty_queue = mp.Queue()  # queue, to save results for multi_processing
 
-    scores = penalty2score(para_penalties)[0]  # functions returns ndarray
+    # start process
 
-    # print evaluation scores
-    print('Evaluation scores for iteration {}:'.format(_itr))
-    for _i, _ in enumerate(scores):
-        print('Parameter %d: a1: %.3f, a2: %.3f; b2: %.3f, b3: %.3f, with score: %.3e'
-              % (_i + 1, _s[_i][0], _s[_i][1], _s[_i][2], _s[_i][3], _))
-    return scores
+    for idx, chunk in enumerate(pop):
+        alpha = list(beta[:2])
+        beta = [5] + list(beta[2:])
+        data_input = {'alpha': alpha, 'beta': beta,
+                      'phi': phi,
+                      'util_matrix': utility_matrix,
+                      'time_matrix': edge_time_matrix,
+                      'cost_matrix': edge_cost_matrix,
+                      'dwell_matrix': dwell_vector,
+                      'dist_matrix': edge_distance_matrix}
+
+        process = mp.Process(target=SolverUtility.solver, args=(penalty_queue, idx, node_num, chunk),
+                             kwargs=data_input, name='P{}'.format(idx + 1))
+        jobs.append(process)
+        process.start()
+
+    for j in jobs:
+        # wait for processes to complete and join them
+        j.join()
+
+    # retrieve parameter penalties from queue
+    penalty_total = 0
+    while True:
+        if penalty_queue.empty():  # 如果队列空了，就退出循环
+            break
+        else:
+            penalty_total += penalty_queue.get()[1]  # 0是index，1才是data
+    return penalty_total  # unit transformed from km to m
+
+
+def parse_observed_trips(_agents: list):
+    enmerated_agents = 0
+    observed_trip_table = np.zeros((37, 37), dtype=int)
+
+    for _agent in _agents:
+        # attraction indices in solver start from 0 (in survey start from 1)
+        pref, observed_path = _agent.preference, list(np.array(_agent.path_obs) - 1)
+
+        if pref is None or observed_path is None:
+            continue
+        # skip empty paths (no visited location)
+        if len(observed_path) < 3:
+            continue
+        # parse trip frequency
+        for _idx in range(len(observed_path) - 1):
+            _o, _d = observed_path[_idx], observed_path[_idx + 1]
+            try:
+                observed_trip_table[_o, _d] += 1
+            except IndexError:
+                continue
+        enmerated_agents += 1
+    return enmerated_agents, observed_trip_table
+
+
+def eval_fun_trips(para):
+    # divide population into chunks to initiate multi-processing.
+    n_cores = mp.cpu_count()
+    pop = chunks(agent_database, n_cores)
+    # for i in pop:
+    #     print(len(i))  # 尽可能平均
+
+    jobs = []
+    penalty_queue = mp.Queue()  # queue, to save results for multi_processing
+
+    # start process
+
+    for idx, chunk in enumerate(pop):
+        _alpha = list(para[:2])
+        _beta = [5] + list(para[2:])
+        data_input = {'alpha': _alpha, 'beta': _beta,
+                      'phi': phi,
+                      'util_matrix': utility_matrix,
+                      'time_matrix': edge_time_matrix,
+                      'cost_matrix': edge_cost_matrix,
+                      'dwell_matrix': dwell_vector,
+                      'dist_matrix': edge_distance_matrix}
+
+        process = mp.Process(target=SolverUtility.solver_trip_stat, args=(penalty_queue, idx, node_num, chunk),
+                             kwargs=data_input, name='P{}'.format(idx + 1))
+        jobs.append(process)
+        process.start()
+
+    for j in jobs:
+        # wait for processes to complete and join them
+        j.join()
+    print('Jobs successfully joined.')
+    # retrieve parameter penalties from queue
+    trip_table = np.zeros((37, 37), dtype=int)
+    while True:
+        if penalty_queue.empty():  # 如果队列空了，就退出循环
+            break
+        else:
+            cur_idx = penalty_queue.get()
+            name = 'predicted_trip_table_{}.pickle'.format(cur_idx)
+            with open(os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp', name),
+                      'rb') as file:
+                trip_segment = pickle.load(file)  # note: agent = tourists here
+                trip_table += trip_segment
+
+    return trip_table  # unit transformed from km to m
+
+
+def parse_pdt_trip(_dir):
+    trip_table = np.zeros((37, 37), dtype=int)
+    filenames = []
+    for root, dirs, files in os.walk(_dir, topdown=False):
+        for name in files:
+            filenames.append(os.path.join(root, name))
+    while filenames:
+        name = filenames.pop()
+        with open(name, 'rb') as _file:
+            trip_segment = pickle.load(_file)  # note: agent = tourists here
+            trip_table += trip_segment
+    return trip_table
 
 
 if __name__ == '__main__':
     # Data preparation
-    # %% Solver Setup
-    # load agents
+    # %% read tourist agents
+    with open(os.path.join(os.path.dirname(__file__), 'slvr', 'Database', 'transit_user_database.pickle'),
+              'rb') as file:
+        agent_database = pickle.load(file)  # note: agent = tourists here
+
     print('Setting up agents...')
-    agent_database = sim_data.agent_database
 
     # %% setting up nodes
     node_num = sim_data.node_num  # Number of attractions. Origin and destination are excluded.
@@ -167,8 +273,29 @@ if __name__ == '__main__':
     # %% parameter setup
     phi = sim_data.phi
 
-
-    # %% todo evaluation for a single set of parameter
+    # %% evaluation for a single set of parameter
+    # numerical gradient using * parameter
+    s = [0, 0, 0, 0]
+    test_flag = input("Initiate penalty evaluation test? Any key to procceed 'Enter' to skip.")
+    if test_flag:
+        test_obj = eval_fun(s)
+        print('Test penalty for beta* :', test_obj)
     # todo null case的话把preference也去掉, 即 node utility之和只= sum(U_ik)
     # %% statistics of interest
+    enumerated_usrs, obs_trip_table = parse_observed_trips(agent_database)
+
+    # observed trip tables 要不要scaled to the whole population's size?
+
+    # predicted trip tables
+    s_opt = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
+
+    if input('Parse or evaluate predicted trip table given current optimal set of parameters?'):
+        predicted_trip_tables = eval_fun_trips(s_opt)
+    else:
+        trip_temp_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp')
+        predicted_trip_tables = parse_pdt_trip(trip_temp_dir)
+    # %% x
     # todo 比较两个trip table的相对偏差，+-量
+
+    error_trip_table = predicted_trip_tables - obs_trip_table
+    error_trip_percentage = (predicted_trip_tables - obs_trip_table)/obs_trip_table

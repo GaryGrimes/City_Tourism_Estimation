@@ -20,12 +20,6 @@ def print_path(path_to_print):
     print(list(np.array(path_to_print) + 1))
 
 
-# %% read tourist agents
-with open(os.path.join(os.path.dirname(__file__), 'Database', 'transit_user_database.pickle'),
-          'rb') as file:
-    agent_database = pickle.load(file)  # note: agent = tourists here
-
-print('Setting up agents...')
 
 # %% setting up nodes
 node_num = 37  # Number of attractions. Origin and destination are excluded.
@@ -58,7 +52,7 @@ no_update, itr = 0, 0
 # print('Starting travel_time_check...')
 for _ in range(3):
     while not no_update:
-        print('Current iteration: {}'.format(itr + 1))
+        # print('Current iteration: {}'.format(itr + 1))
         no_update = 1
         for i in range(edge_time_matrix.shape[0] - 1):
             for j in range(i + 1, edge_time_matrix.shape[0]):
@@ -74,7 +68,7 @@ for _ in range(3):
                     edge_time_matrix[j, i] = edge_time_matrix[i, j] = shortest_time
         itr += 1
         if no_update:
-            print('Travel time update complete.\n')
+            # print('Travel time update complete.\n')
             pass
 
 # Edge travel cost (fare)

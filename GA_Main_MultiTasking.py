@@ -246,9 +246,12 @@ def mutation(prob, best_score, population, population_scores):
 
 if __name__ == '__main__':
     # %% Solver Setup
-    # load agents
+    #  read tourist agents
+    with open(os.path.join(os.path.dirname(__file__), 'slvr', 'Database', 'transit_user_database.pickle'),
+              'rb') as file:
+        agent_database = pickle.load(file)  # note: agent = tourists here
+
     print('Setting up agents...')
-    agent_database = sim_data.agent_database
 
     # %% setting up nodes
     node_num = sim_data.node_num  # Number of attractions. Origin and destination are excluded.
