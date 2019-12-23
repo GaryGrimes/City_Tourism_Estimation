@@ -39,6 +39,13 @@ class Trips(object):
         self.food_cost, self.sovn_cost = None, None
 
 
+def change_travel_time(target: tuple) -> None:
+    pass
+
+def change_fare(target: tuple) -> None:
+    pass
+
+
 if __name__ == '__main__':
     # read agent database
     with open(os.path.join(os.path.dirname(__file__), 'slvr', 'Database', 'transit_user_database.pickle'), 'rb') as file:
@@ -48,3 +55,4 @@ if __name__ == '__main__':
         trip_database = pickle.load(file)  # note: agent = tourists here
 
     # %% statistics of interest
+    # todo 比较两个trip table的相对偏差，+-量
