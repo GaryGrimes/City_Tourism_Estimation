@@ -10,4 +10,4 @@ Add newly merged change, test
 test to add tags.
 
 # Dec. 23
-Test if Lab PC has been permitted to push to remote repo.
+Test if Lab PC has been permitted to push to remote repo. Test 2.
