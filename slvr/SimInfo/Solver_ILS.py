@@ -228,10 +228,10 @@ def path_penalty(p_a, p_b):
     # if both paths are not empty (excluding o, d)
 
     # check node indices. Observed path with Detailed location (58) or unclear places (99) were skipped.
-    # TODO Better to omit those places in the path than skipping to next tourist
-    max_idx = max(max(path_a), max(path_b))
-    if max_idx > min(distance_matrix.shape) - 1:
-        return 0
+    # TODO Better to omit outbound visits in the path rather than skip to next tourist. Completed in DataWrapping.
+    # max_idx = max(max(path_a), max(path_b))
+    # if max_idx > min(distance_matrix.shape) - 1:
+    #     return 0
 
     rows, cols = len(path_a) + 1, len(path_b) + 1
 

@@ -214,8 +214,8 @@ class SolverUtility(object):
         q.put((process_idx, data['penalty']))
 
     @staticmethod
-    def solver_null(q, process_idx, node_num, agent_database,
-                    **kwargs):  # Levenshtein distance, with path threshold filter
+    def solver_null(q, process_idx, node_num, agent_database, **kwargs):
+        """ Using Levenshtein distance, with path threshold filter """
         # pass variables
         alpha, beta, phi, util_matrix, time_matrix, \
         cost_matrix, dwell_matrix, dist_matrix = kwargs['alpha'], kwargs['beta'], kwargs['phi'], kwargs[
@@ -419,6 +419,8 @@ class SolverUtility(object):
 
     @staticmethod
     def solver_trip_stat(q, process_idx, node_num, agent_database, **kwargs):
+        """ Predict tours and generate trip frequency table for a single set of parameters. """
+
         # Levenshtein distance, with path threshold filter
 
         # pass variables
@@ -434,7 +436,7 @@ class SolverUtility(object):
 
         # save results for all agents
         _penalty, _pdt_path, _obs_path = [], [], []
-        # todo trip_table 变量， 并在sent to queue的时候折叠为array (using .flatten()), customer side use reshape([37, 37])
+        #  trip_table 变量， 并在sent to queue的时候折叠为array (using .flatten()), customer side use reshape([37, 37])
         trip_table = np.zeros((37, 37), dtype=int)
 
         # enumerate each tourist
@@ -628,8 +630,208 @@ class SolverUtility(object):
         pickle.dump(trip_table, file)
         q.put(process_idx)
 
-    @staticmethod  # levenshtein distance, no path threshold filter
+    @staticmethod
+    def solver_util_scatter(q, process_idx, node_num, agent_database, **kwargs):
+        """ Predict tours and generate tuples with observed and predicted trip
+        utilities for a single set of parameters. Using Levenshtein distance, with path threshold filter."""
+
+        # pass variables
+        alpha, beta, phi, util_matrix, time_matrix, \
+        cost_matrix, dwell_matrix, dist_matrix = kwargs['alpha'], kwargs['beta'], kwargs['phi'], kwargs[
+            'util_matrix'], kwargs['time_matrix'], kwargs['cost_matrix'], kwargs['dwell_matrix'], kwargs['dist_matrix']
+
+        # behavioral parameters data setup
+
+        Solver_ILS.alpha = kwargs['alpha']
+        Solver_ILS.beta = kwargs['beta']
+        Solver_ILS.phi = kwargs['phi']
+
+        # save results for all agents
+        _penalty, _pdt_path, _obs_path = [], [], []
+
+        util_scatter_dots = []
+
+        # enumerate each tourist
+
+        # node setup
+        node_properties = {'node_num': node_num,
+                           'utility_matrix': util_matrix,
+                           'dwell_vector': dwell_matrix}
+
+        # edge setup
+        edge_properties = {'edge_time_matrix': time_matrix,
+                           'edge_cost_matrix': cost_matrix,
+                           'edge_distance_matrix': dist_matrix}
+
+        Solver_ILS.edge_setup(**edge_properties)
+
+        iteration_size = len(agent_database)
+
+        for _idd, _agent in enumerate(agent_database):
+            if _idd > 0 and _idd % 500 == 0:
+                print(
+                    '--- Running optimal tours for the {} agent in {} for process {}'.format(
+                        _idd, len(agent_database), mp.current_process().name))
+
+            pref = _agent.preference
+            observed_path = _agent.path_obs
+            t_max, origin, destination = _agent.time_budget, observed_path[0] - 1, observed_path[-1] - 1
+            visit_history = {}
+
+            if pref is None or observed_path is None:
+                continue
+            # skip empty paths (no visited location)
+            if len(observed_path) < 3:
+                continue
+
+            """node setup process should be here!!"""
+            # ... since nodes controls visit history in path update for each agent
+            Solver_ILS.node_setup(**node_properties)
+
+            # agents setup
+            agent_properties = {'time_budget': t_max,
+                                'origin': origin,
+                                'destination': destination,
+                                'preference': pref,
+                                'visited': visit_history}
+
+            Solver_ILS.agent_setup(**agent_properties)
+
+            # each path_op will be saved into the predicted path set for agent n
+            path_pdt = []
+
+            # %% strat up solver
+            no_init_flag = 0
+            # solver initialization
+            initial_path = Solver_ILS.initial_solution()
+
+            if len(initial_path) <= 2:
+                no_init_flag = 1
+            else:
+                first_visit = initial_path[1]
+                Solver_ILS.Node_list[first_visit].visit = 1
+
+                order = initial_path
+                final_order = list(order)
+
+                # No edgeMethod in my case
+                _u, _u8, _U10 = [], [], []
+
+                counter_2 = 0
+                no_improve = 0
+                best_found = float('-inf')
+
+                while no_improve < 50:
+                    best_score = float('-inf')
+                    local_optimum = 0
+
+                    # print(Order)
+
+                    while local_optimum == 0:
+                        local_optimum, order, best_score = Solver_ILS.insert(order, best_score)
+
+                    counter_2 += 1  # 2指inner loop的counter
+                    v = len(order) - 1
+
+                    _u.append(best_score)  # TODO U is utility memo
+                    _u8.append(v)
+                    _U10.append(max(_u))
+
+                    if best_score > best_found:
+                        best_found = best_score
+                        final_order = list(order)
+
+                        # save intermediate good paths into results
+                        path_pdt.append(list(final_order))
+                        no_improve = 0  # improved
+                    else:
+                        no_improve += 1
+
+                    if len(order) <= 2:
+                        continue
+                    else:
+                        s = np.random.randint(1, len(order) - 1)
+                        R = np.random.randint(1, len(order) - s)  # from node S, delete R nodes (including S)
+
+                    if s >= min(_u8):
+                        s = s - min(_u8) + 1
+
+                    order = Solver_ILS.shake(order, s, R)
+
+            # Prediction penalty evaluation. Compare the predicted paths with observed one.
+
+            path_obs = list(
+                np.array(_agent.path_obs) - 1)  # attraction indices in solver start from 0 (in survey start from 1)
+
+            # last modified on Oct. 24 16:29 2019
+            # last modified on Dec. 20
+
+            if no_init_flag:
+                # do compulsory fill
+                path_pdt.append(Solver_ILS.comp_fill())
+                pass
+
+            """ Path score = experienced utiltiy. Not total penalty for a set of parameters"""
+
+            selected_path, selected_util = [], []
+            if len(path_pdt) < 3:  # return directly if...
+                selected_path = list(path_pdt)
+                for _path in selected_path:
+                    selected_util.append(Solver_ILS.eval_util(_path))
+            else:
+                # evaluate scores for all path predicted (not penalty with the observed path here)
+                path_pdt_score = []
+                for _path in path_pdt:
+                    path_pdt_score.append(Solver_ILS.eval_util(_path))  # a list of penalties
+
+                filter_ratio = 0.15  # predicted paths with penalties within 15% interval
+                max_score = max(path_pdt_score)  # max utility score for current path
+
+                ''' within 85% score or at least 3 paths in the predicted path set'''
+                threshold = max_score - abs(filter_ratio * max_score)
+
+                for _ in np.argsort(path_pdt_score)[::-1]:
+                    if path_pdt_score[_] >= threshold:
+                        selected_path.append(path_pdt[_])
+                        selected_util.append(path_pdt_score[_])
+                    else:
+                        break
+
+                # at least 3 paths in the set
+                if len(selected_path) < 3:
+                    selected_path, selected_util = [], []
+                    for _ in np.argsort(path_pdt_score)[-3:]:
+                        selected_path.append(path_pdt[_])
+                        selected_util.append(path_pdt_score[_])
+
+            # -------- Path penalty evaluation --------
+            """ compares the observed utility with predicted """
+            # compare predicted path with observed
+            path_obs_util = Solver_ILS.eval_util(path_obs)
+
+            # 一条和observed有最相近utility的predcited path，并generate utility tuple (predicted and observed)
+            res = [abs(path_obs_util - selected_util[_]) for _ in range(len(selected_util))]
+            # the one with smallest difference
+            best_path_predicted, lowest_penalty = selected_path[np.argsort(res)[0]], np.sort(res)[0]
+
+            util_tuple = (path_obs_util, selected_util[np.argsort(res)[0]])
+            util_scatter_dots.append(util_tuple)
+
+            # WRITE PREDICTED PATH AND PENALTY
+
+            _penalty.append(lowest_penalty)
+            _pdt_path.append(best_path_predicted)
+            _obs_path.append(path_obs)
+
+        # if oversize (capacity limit) encountered, try dump the results by pickle and read again
+        name = 'utility_tuples_{}.pickle'.format(process_idx)
+        file = open(os.path.join(os.path.dirname(__file__), 'SimInfo', 'temp', 'scatter plot', name), 'wb')
+        pickle.dump(util_scatter_dots, file)  # dump file
+        q.put((process_idx, sum(_penalty)))
+
+    @staticmethod
     def solver_LD_noPF(q, process_idx, node_num, agent_database, **kwargs):
+        """ with levenshtein distance, no path threshold filter"""
         # pass variables
         alpha, beta, phi, util_matrix, time_matrix, cost_matrix, dwell_matrix, dist_matrix = kwargs['alpha'], \
                                                                                              kwargs['beta'], kwargs[

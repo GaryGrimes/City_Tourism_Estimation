@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 This script is to generate agent and network data for optimal tour (TTDP) solver. Last modified on Nov. 15.
-因为simulation的结果也是不计算intrazonal movements的，所以在仿真系统内的Data来说，统一将不考虑TAZ内trips，
+Several differences to note:
+1. 因为simulation的结果也是不计算intrazonal movements的，所以在仿真系统内的Data来说，统一将不考虑TAZ内trips，
 并且将这些trips合并到前一个inter-zonal的trip。 Last modified on Dec. 22.
+2. Outbound visits in observed trip chains are also omitted. Last modified on Dec. 24
 """
 import pandas as pd
 import os
@@ -226,6 +228,8 @@ if flag:
         if trips_df is None:
             continue
         trips_df = pd.DataFrame(trips_df)  # define type
+
+        # destination of previous visit will be the origin for current trip, except for the last destination
         path = [trips_df['出発地'][0]] + list(trips_df['到着地'])
         if len(path) < 3:
             print(ValueError('path length < 2, at {}'.format(ENQ2006.loc[count, 'ナンバリング'])))
@@ -238,7 +242,12 @@ if flag:
             continue
 
         x.trip_df = trips_df
-        x.path_obs = path
+
+        # modified on Dec. 24
+        path_skip_out_of_bound_visit = [_ for _ in path if _ <= len(Edge_time_matrix)]  # skip visits like 5x. 58 and 99
+
+        x.path_obs = path_skip_out_of_bound_visit
+
         # get time budget
         T_start_h, T_end_h = trips_df['出発時'].iloc[0], trips_df['到着時'].iloc[-1]
         T_start_m, T_end_m = trips_df['出発分'].iloc[0], trips_df['到着分'].iloc[-1]
@@ -298,6 +307,7 @@ if flag:
     pickle.dump(agent_database, file)
 
 """ ok, DATA PREPARATION complete!
+
 # read agent database
 # with open(os.path.join(os.path.dirname(__file__), 'Database', 'transit_user_database.pickle'), 'rb') as file:
 #     agent_database = pickle.load(file)

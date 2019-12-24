@@ -232,6 +232,55 @@ def eval_fun_trips(para):
     return trip_table  # unit transformed from km to m
 
 
+def eval_fun_util_tuples(para):
+    # divide population into chunks to initiate multi-processing.
+    n_cores = mp.cpu_count()
+    pop = chunks(agent_database, n_cores)
+    # for i in pop:
+    #     print(len(i))  # 尽可能平均
+
+    jobs = []
+    penalty_queue = mp.Queue()  # queue, to save results for multi_processing
+
+    # start process
+
+    for idx, chunk in enumerate(pop):
+        _alpha = list(para[:2])
+        _beta = [5] + list(para[2:])
+        data_input = {'alpha': _alpha, 'beta': _beta,
+                      'phi': phi,
+                      'util_matrix': utility_matrix,
+                      'time_matrix': edge_time_matrix,
+                      'cost_matrix': edge_cost_matrix,
+                      'dwell_matrix': dwell_vector,
+                      'dist_matrix': edge_distance_matrix}
+
+        process = mp.Process(target=SolverUtility.solver_util_scatter, args=(penalty_queue, idx, node_num, chunk),
+                             kwargs=data_input, name='P{}'.format(idx + 1))
+        jobs.append(process)
+        process.start()
+
+    for j in jobs:
+        # wait for processes to complete and join them
+        j.join()
+    print('Jobs successfully joined.')
+    # retrieve parameter penalties from queue
+    res_tuples = [], penalty_total = 0
+    while True:
+        if penalty_queue.empty():  # 如果队列空了，就退出循环
+            break
+        else:
+            cur_idx = penalty_queue.get()[0]
+            penalty_total += penalty_queue.get()[1]
+            name = 'utility_tuples_{}.pickle'.format(cur_idx)
+            with open(os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp', 'scatter plot', name),
+                      'rb') as _file:
+                tuple_segment = pickle.load(_file)  # note: agent = tourists here
+                res_tuples.extend(tuple_segment)
+
+    return res_tuples, penalty_total  # unit transformed from km to m
+
+
 def parse_pdt_trip(_dir):
     trip_table = np.zeros((37, 37), dtype=int)
     filenames = []
@@ -254,7 +303,18 @@ if __name__ == '__main__':
         agent_database = pickle.load(file)  # note: agent = tourists here
 
     print('Setting up agents...')
-
+    print('Parsing if any agent violates outbound visit...')
+    # for agents in agent database, 看observed trip里 o和d有超过47的吗？
+    cnt = 0
+    for _idx, _agent in enumerate(agent_database):
+        error_visit = []
+        for _visit in _agent.path_obs:
+            if _visit > 47:
+                error_visit.append(_visit)
+        if error_visit:
+            cnt += 1
+            print('Error visits: {} for agent with index {}'.format(error_visit, _idx))
+    print('Total {} error found'.format(cnt))
     # %% setting up nodes
     node_num = sim_data.node_num  # Number of attractions. Origin and destination are excluded.
 
@@ -276,7 +336,7 @@ if __name__ == '__main__':
     # %% evaluation for a single set of parameter
     # numerical gradient using * parameter
     s = [0, 0, 0, 0]
-    test_flag = input("Initiate penalty evaluation test? Any key to procceed 'Enter' to skip.")
+    test_flag = input("1. Initiate penalty evaluation test? Any key to procceed 'Enter' to skip.")
     if test_flag:
         test_obj = eval_fun(s)
         print('Test penalty for beta* :', test_obj)
@@ -289,13 +349,17 @@ if __name__ == '__main__':
     # predicted trip tables
     s_opt = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
 
-    if input('Parse or evaluate predicted trip table given current optimal set of parameters?'):
+    if input('2. Evaluate predicted trip table given current optimal set of parameters? Enter to skip.'):
         predicted_trip_tables = eval_fun_trips(s_opt)
     else:
         trip_temp_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp')
         predicted_trip_tables = parse_pdt_trip(trip_temp_dir)
-    # %% x
-    # todo 比较两个trip table的相对偏差，+-量
 
     error_trip_table = predicted_trip_tables - obs_trip_table
-    error_trip_percentage = (predicted_trip_tables - obs_trip_table)/obs_trip_table
+    error_trip_percentage = (predicted_trip_tables - obs_trip_table) / obs_trip_table
+    # %% Error between the utilities of observed trip and predicted trip, for each tourist using PT
+    # todo 比较两个trip table的相对偏差，+-量
+    if input('3. Evaluate utility tuples of observed and predicted trips? Enter to skip, any key to proceed.'):
+        to_plot_tuples, para_penalty = eval_fun_util_tuples(s_opt)
+
+
