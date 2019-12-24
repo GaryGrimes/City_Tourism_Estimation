@@ -288,18 +288,26 @@ if __name__ == '__main__':
     # parameter = [-0.05, -0.05, 0.03, 0.1]
     # s = [[]]  # todo initialize s with good results in initialization evaluation
 
-    s = [[1.0, 0.03, 0.3, 0.1],
-         [1.0, 0.03, 1.0, 0.1],
-         [0.03, 0.01, 3.0, 0.03],
-         [1.0, 0.03, 3.0, 0.1],
-         [1.0, 0.03, 0.1, 0.1],
-         [1.0, 0.03, 0.03, 0.1],
-         [1.0, 0.01, 0.1, 0.1],
-         [1.0, 0.03, 0.01, 0.1],
-         [3.0, 0.1, 1.0, 0.3],
-         [1.0, 0.01, 0.01, 0.1],
-         [0.3, 0.01, 0.3, 0.03]]
+    initial_eval_filename = 'Initialization objective values ILS_PF_LD.xlsx'
+    initial_eval_res = pd.read_excel(
+        os.path.join(os.path.dirname(__file__), 'Evaluation result', initial_eval_filename), index_col=0)
 
+    # sort values by penalty
+    temp_df = initial_eval_res.sort_values(by=['penalty'])
+    s = temp_df.loc[:, 'a1':'b3'].values[:(POP_SIZE - 2)].tolist()
+
+    # s = [[1.0, 0.03, 0.3, 0.1],
+    #      [1.0, 0.03, 1.0, 0.1],
+    #      [0.03, 0.01, 3.0, 0.03],
+    #      [1.0, 0.03, 3.0, 0.1],
+    #      [1.0, 0.03, 0.1, 0.1],
+    #      [1.0, 0.03, 0.03, 0.1],
+    #      [1.0, 0.01, 0.1, 0.1],
+    #      [1.0, 0.03, 0.01, 0.1],
+    #      [3.0, 0.1, 1.0, 0.3],
+    #      [1.0, 0.01, 0.01, 0.1],
+    #      [0.3, 0.01, 0.3, 0.03]]
+    #
     for i in range(POP_SIZE - len(s)):  # to fill in s
         # random alphas
         a1, a2 = np.random.uniform(-0.5, -0.01), np.random.uniform(-0.5, -0.01)

@@ -156,6 +156,9 @@ if __name__ == '__main__':
 
     # %% todo 	Complaints data should reflect the percentage (complaints/total trips),
     #  todo and filter out very sparse OD pairs, i.e. <= 10 or 15…
+
+    # parse observed trip frequency table. From OD data not agents.pickle file
+
     # write data?
     flag_write = input("Write complaints data to excel? Press 'Enter' to skip, any key to continue.")
     if flag_write:

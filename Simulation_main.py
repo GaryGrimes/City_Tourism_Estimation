@@ -265,34 +265,54 @@ def eval_fun_util_tuples(para):
         j.join()
     print('Jobs successfully joined.')
     # retrieve parameter penalties from queue
-    res_tuples = [], penalty_total = 0
+    res_tuples = []
+
     while True:
         if penalty_queue.empty():  # 如果队列空了，就退出循环
             break
         else:
-            cur_idx = penalty_queue.get()[0]
-            penalty_total += penalty_queue.get()[1]
+            cur_idx = penalty_queue.get()
             name = 'utility_tuples_{}.pickle'.format(cur_idx)
             with open(os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp', 'scatter plot', name),
                       'rb') as _file:
                 tuple_segment = pickle.load(_file)  # note: agent = tourists here
                 res_tuples.extend(tuple_segment)
+                print('Enumerated res from process {}, res_tuple added {} elements. Now size: {}'.format(cur_idx, len(
+                    tuple_segment), len(res_tuples)))
 
-    return res_tuples, penalty_total  # unit transformed from km to m
+    return res_tuples  # unit transformed from km to m
 
 
 def parse_pdt_trip(_dir):
     trip_table = np.zeros((37, 37), dtype=int)
     filenames = []
-    for root, dirs, files in os.walk(_dir, topdown=False):
+    for root, dirs, files in os.walk(_dir, topdown=False):  # os_walk只能在当前目录，不能深入！
         for name in files:
-            filenames.append(os.path.join(root, name))
+            if name.startswith('predicted_trip_table'):
+                filenames.append(os.path.join(root, name))
     while filenames:
         name = filenames.pop()
         with open(name, 'rb') as _file:
             trip_segment = pickle.load(_file)  # note: agent = tourists here
-            trip_table += trip_segment
+            trip_table += np.array(trip_segment).reshape((37, 37))
     return trip_table
+
+
+def parse_pdt_tuples(_dir):
+    res_tuples = []
+
+    filenames = []
+    for root, dirs, files in os.walk(_dir, topdown=False):
+        for name in files:
+            if name.startswith('utility_tuples'):
+                filenames.append(os.path.join(root, name))
+    while filenames:
+        name = filenames.pop()
+        with open(name, 'rb') as _file:
+            tuple_segment = pickle.load(_file)  # note: agent = tourists here
+            res_tuples.extend(tuple_segment)
+            print('Tuple size: {}'.format(len(tuple_segment)))
+    return res_tuples
 
 
 if __name__ == '__main__':
@@ -360,6 +380,7 @@ if __name__ == '__main__':
     # %% Error between the utilities of observed trip and predicted trip, for each tourist using PT
     # todo 比较两个trip table的相对偏差，+-量
     if input('3. Evaluate utility tuples of observed and predicted trips? Enter to skip, any key to proceed.'):
-        to_plot_tuples, para_penalty = eval_fun_util_tuples(s_opt)
-
-
+        to_plot_tuples = eval_fun_util_tuples(s_opt)
+    else:
+        tuple_temp_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp', 'scatter plot')
+        to_plot_tuples = parse_pdt_tuples(tuple_temp_dir)

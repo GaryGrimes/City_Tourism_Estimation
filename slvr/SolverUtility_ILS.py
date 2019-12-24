@@ -665,8 +665,6 @@ class SolverUtility(object):
 
         Solver_ILS.edge_setup(**edge_properties)
 
-        iteration_size = len(agent_database)
-
         for _idd, _agent in enumerate(agent_database):
             if _idd > 0 and _idd % 500 == 0:
                 print(
@@ -827,7 +825,8 @@ class SolverUtility(object):
         name = 'utility_tuples_{}.pickle'.format(process_idx)
         file = open(os.path.join(os.path.dirname(__file__), 'SimInfo', 'temp', 'scatter plot', name), 'wb')
         pickle.dump(util_scatter_dots, file)  # dump file
-        q.put((process_idx, sum(_penalty)))
+
+        q.put(process_idx)
 
     @staticmethod
     def solver_LD_noPF(q, process_idx, node_num, agent_database, **kwargs):

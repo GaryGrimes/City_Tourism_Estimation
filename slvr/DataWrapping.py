@@ -5,6 +5,8 @@ Several differences to note:
 1. 因为simulation的结果也是不计算intrazonal movements的，所以在仿真系统内的Data来说，统一将不考虑TAZ内trips，
 并且将这些trips合并到前一个inter-zonal的trip。 Last modified on Dec. 22.
 2. Outbound visits in observed trip chains are also omitted. Last modified on Dec. 24
+3. Intermediate visits between o and d are restricted for the 37 attraction areas only.
+Visits to transit hubs will be omitted too. Last modified on Dec. 24
 """
 import pandas as pd
 import os
@@ -99,6 +101,7 @@ def get_trip_chain(index):  # get trip info. for a specific tourist
 
 
 # %% DATA PREPARATION
+node_num = 37
 # read OD data
 print('Reading OD data...\n')
 OD_data = pd.read_excel(os.path.join(os.path.dirname(__file__), 'Database', '観光客の動向調査.xlsx'), sheet_name='OD')
@@ -244,9 +247,10 @@ if flag:
         x.trip_df = trips_df
 
         # modified on Dec. 24
-        path_skip_out_of_bound_visit = [_ for _ in path if _ <= len(Edge_time_matrix)]  # skip visits like 5x. 58 and 99
-
-        x.path_obs = path_skip_out_of_bound_visit
+        _o, _d = path.pop(0), path.pop(-1)
+        inter_path_skip_out_of_bound_visit = [_ for _ in path if _ <= node_num]  # skip visits like 5x. 58 and 99
+        path = [_o] + inter_path_skip_out_of_bound_visit + [_d]
+        x.path_obs = list(path)
 
         # get time budget
         T_start_h, T_end_h = trips_df['出発時'].iloc[0], trips_df['到着時'].iloc[-1]
