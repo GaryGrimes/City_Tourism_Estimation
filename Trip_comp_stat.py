@@ -45,7 +45,7 @@ if __name__ == '__main__':
     # %% complaints and dissatisfaction
     comp_freq_table = OD_data.loc[:, '不満点１':'不満点６'].values
     temp = comp_freq_table.flatten()
-    comp_fre_array = temp[temp > 0]
+    comp_fre_array = temp[temp > 0].astype(int)
 
     y = np.bincount(comp_fre_array)
     ii = np.nonzero(y)[0]
@@ -155,11 +155,50 @@ if __name__ == '__main__':
             continue
 
     # %% todo 	Complaints data should reflect the percentage (complaints/total trips),
-    #  todo and filter out very sparse OD pairs, i.e. <= 10 or 15…
+    #  todo and
 
     # parse observed trip frequency table. From OD data not agents.pickle file
 
-    # write data?
+    # only parse trips between attractions 1-37
+
+    observed_trip_table = np.zeros([37, 37], dtype=int)
+    _os, _ds = OD_data['出発地'].values - 1, OD_data['到着地'].values - 1  # index in observed trip tables starts from 0
+    for _idx in range(len(_os)):
+        try:
+            observed_trip_table[_os[_idx], _ds[_idx]] += 1
+        except IndexError:
+            continue
+    df_observed_trip_table = pd.DataFrame(observed_trip_table, dtype=int)
+    flag = 0
+    if flag:
+        df_observed_trip_table.to_excel('Project Database/Observed_trip_table.xlsx')
+
+    per_congestion_comp_mat = congestion_comp_mat / observed_trip_table
+    per_c_congestion_comp_mat = c_congestion_comp_mat / observed_trip_table
+    per_line_freq_comp_mat = line_freq_comp_mat / observed_trip_table
+    per_fare_comp_mat = fare_comp_mat / observed_trip_table
+
+    # filter out very sparse OD pairs, i.e. <= 10 or 15…
+    for i in range(observed_trip_table.shape[0]):
+        for j in range(observed_trip_table.shape[1]):
+            if observed_trip_table[i, j] <= 15:
+                per_congestion_comp_mat[i, j] = 0
+                per_c_congestion_comp_mat[i, j] = 0
+                per_line_freq_comp_mat[i, j] = 0
+                per_fare_comp_mat[i, j] = 0
+    flag = 0
+    if flag:
+        pd.DataFrame(100 * per_congestion_comp_mat).round(1).to_excel(
+            'Project Database/Complaints statistics/congestion_comp_rate.xlsx')
+        pd.DataFrame(100 * per_c_congestion_comp_mat).round(1).to_excel(
+            'Project Database/Complaints statistics/cabin_congestion_comp_rate.xlsx')
+
+        pd.DataFrame(100 * per_line_freq_comp_mat).round(1).to_excel(
+            'Project Database/Complaints statistics/line_freq_comp_rate.xlsx')
+        pd.DataFrame(100 * per_fare_comp_mat).round(1).to_excel(
+            'Project Database/Complaints statistics/fare_comp_rate.xlsx')
+
+    # %% write data?
     flag_write = input("Write complaints data to excel? Press 'Enter' to skip, any key to continue.")
     if flag_write:
         temp_df = pd.DataFrame(congestion_comp_mat)

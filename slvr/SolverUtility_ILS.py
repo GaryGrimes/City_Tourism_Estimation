@@ -7,6 +7,18 @@ from SimInfo import Solver_ILS
 import datetime
 import pickle
 import os
+import SimDataProcessing as sim_data
+
+
+class Tourist(object):
+    tourist_count = 0
+
+    def __init__(self, index, uid):
+        self.index, self.uid = index, uid
+        self.trip_df, self.time_budget = None, 0
+        self.path_pdt, self.path_obs = None, None
+        self.preference = None
+        Tourist.tourist_count += 1
 
 
 class SolverUtility(object):
@@ -1929,4 +1941,104 @@ class SolverUtility(object):
 
 
 if __name__ == '__main__':
-    pass
+    # debug
+    # Data preparation
+    # %% read tourist agents
+    with open(os.path.join(os.path.dirname(__file__), 'Database', 'transit_user_database.pickle'),
+              'rb') as file:
+        agent_database = pickle.load(file)  # note: agent = tourists here
+
+    print('Setting up agents...')
+    print('Parsing if any agent violates outbound visit...')
+    # for agents in agent database, 看observed trip里 o和d有超过47的吗？
+    cnt = 0
+    for _idx, _agent in enumerate(agent_database):
+        error_visit = []
+        for _visit in _agent.path_obs:
+            if _visit > 47:
+                error_visit.append(_visit)
+        if error_visit:
+            cnt += 1
+            print('Error visits: {} for agent with index {}'.format(error_visit, _idx))
+    print('Total {} error found'.format(cnt))
+    # %% setting up nodes
+    node_num = sim_data.node_num  # Number of attractions. Origin and destination are excluded.
+
+    utility_matrix = sim_data.utility_matrix
+    dwell_vector = sim_data.dwell_vector
+
+    # %% edge property
+    edge_time_matrix = sim_data.edge_time_matrix
+
+    # Edge travel cost (fare)
+    edge_cost_matrix = sim_data.edge_cost_matrix
+
+    # Edge travel distance. distance matrix for path penalty evaluation
+    edge_distance_matrix = sim_data.edge_distance_matrix  # distance between attraction areas
+
+    # %% parameter setup
+    phi = sim_data.phi
+    s_opt = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
+
+    # pass variables
+    alpha, beta = s_opt[:2], [5] + s_opt[2:]  # intercept at 5 too small? Set to 100
+    util_matrix, time_matrix, cost_matrix, dwell_matrix, dist_matrix = \
+        utility_matrix, edge_time_matrix, edge_cost_matrix, dwell_vector, edge_distance_matrix
+
+    # behavioral parameters data setup
+
+    Solver_ILS.alpha = alpha
+    Solver_ILS.beta = beta
+    Solver_ILS.phi = phi
+
+    # save results for all agents
+    _penalty, _pdt_path, _obs_path = [], [], []
+
+    # enumerate each tourist
+    # node setup
+
+    node_properties = {'node_num': node_num,
+                       'utility_matrix': util_matrix,
+                       'dwell_vector': dwell_matrix}
+
+    # edge setup
+
+    edge_properties = {'edge_time_matrix': time_matrix,
+                       'edge_cost_matrix': cost_matrix,
+                       'edge_distance_matrix': dist_matrix}
+
+    Solver_ILS.edge_setup(**edge_properties)
+
+    pref = [0.5, 0.3, 0.3]  # just for test
+    observed_path = [29, 24, 25, 29]  # index starts from 1
+    t_max, origin, destination = 340, observed_path[0] - 1, observed_path[-1] - 1
+
+    visit_history = {}
+
+    start_time = datetime.datetime.now()
+
+    """node setup process should be here!!"""
+    # ... since nodes controls visit history in path update for each agent
+    Solver_ILS.node_setup(**node_properties)
+
+    # agents setup
+    agent_properties = {'time_budget': t_max,
+                        'origin': origin,
+                        'destination': destination,
+                        'preference': pref,
+                        'visited': visit_history}
+
+    Solver_ILS.agent_setup(**agent_properties)
+
+    # each path_op will be saved into the predicted path set for agent n
+    path_pdt = []
+    path_obs = list(np.array(observed_path) - 1)
+
+
+
+    for _ in range(len(path_obs) - 1):
+        edge_tmp = path_obs[_], path_obs[_ + 1]
+        print('Edge travel utility of {}: {:.1f}'.format(edge_tmp, Solver_ILS.arc_util_callback(edge_tmp[0], edge_tmp[1])))
+
+    print('\n')
+    Solver_ILS.eval_util_print(path_obs)

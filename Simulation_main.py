@@ -17,7 +17,7 @@ import math
 import datetime
 import progressbar as pb
 
-plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
+plt.rcParams['font.sans-serif'] = ['Times']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
 
 
@@ -315,6 +315,43 @@ def parse_pdt_tuples(_dir):
     return res_tuples
 
 
+def scatter_plot(_tuple_list, margin_rate=0.05):
+    """Input: a list of tuples consisting observed and predicted path utilities. Can adjust image margin size."""
+    x, y = [], []
+    for _ in _tuple_list:
+        x.append(_[1])  # predicted utility
+        y.append((_[0]))  # observed utility
+
+    plt.figure(dpi=400)
+    x_range, y_range = max(x) - min(x), max(y) - min(y)
+    x_lim, y_lim = (min(x) - margin_rate * x_range, max(x) + margin_rate * x_range), (
+        min(y) - margin_rate * y_range, max(y) + margin_rate * y_range)
+
+    plot_lim_left, plot_lim_right = min(x_lim[0], y_lim[0]), max(x_lim[1], y_lim[1])
+    # plt.axis('equal')
+    # plt.axis([plot_lim_left, plot_lim_right, plot_lim_left, plot_lim_right])
+
+    plt.xlim(plot_lim_left, plot_lim_right)
+    plt.ylim(plot_lim_left, plot_lim_right)
+
+    plt.scatter(x, y, color='blue', alpha=0.5)
+    # draw indentity line
+    line = np.linspace(plot_lim_left, plot_lim_right, 100)
+    zero_line = np.linspace(0, 0, 100)
+    plt.plot(line, line, 'k--')  # identity line
+    plt.plot(zero_line, line, 'r:')  # identity line
+    # label and title
+    plt.title('Relationship between Predicted and Observed Path Utilities')
+    plt.xlabel('Predicted')
+    plt.ylabel('Observed')
+
+    # # https://stackoverflow.com/questions/17990845/how-to-equalize-the-scales-of-x-axis-and-y-axis-in-python-matplotlib
+    # plt.gca().set_aspect('equal', adjustable='box')
+    # plt.draw()
+
+    plt.show()
+
+
 if __name__ == '__main__':
     # Data preparation
     # %% read tourist agents
@@ -368,6 +405,7 @@ if __name__ == '__main__':
 
     # predicted trip tables
     s_opt = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
+    s_null = [0, 0, 0, 0]
 
     if input('2. Evaluate predicted trip table given current optimal set of parameters? Enter to skip.'):
         predicted_trip_tables = eval_fun_trips(s_opt)
@@ -384,3 +422,15 @@ if __name__ == '__main__':
     else:
         tuple_temp_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp', 'scatter plot')
         to_plot_tuples = parse_pdt_tuples(tuple_temp_dir)
+
+    # scatter plot
+    scatter_plot(to_plot_tuples)
+
+    #
+    if input('4. Evaluate utility tuples of observed and predicted for the null case?'):
+        to_plot_tuples_null = eval_fun_util_tuples(s_null)
+        # scatter plot
+        scatter_plot(to_plot_tuples_null)
+    else:
+        pass
+
