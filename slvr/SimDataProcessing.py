@@ -20,22 +20,24 @@ def print_path(path_to_print):
     print(list(np.array(path_to_print) + 1))
 
 
-
 # %% setting up nodes
 node_num = 37  # Number of attractions. Origin and destination are excluded.
 
+# attraction utility was not sorted by index previously
+# todo: consider replace util in 1-6-8 by (gourmet utiltity + red leave and shrines)
 Intrinsic_utilities = pd.read_excel(os.path.join(os.path.dirname(__file__), 'Database', 'Intrinsic Utility.xlsx'),
                                     sheet_name='data')
 utility_matrix = []
 for _idx in range(Intrinsic_utilities.shape[0]):
-    temp = np.around(list(Intrinsic_utilities.iloc[_idx, 1:4]), decimals=3)
+    temp = np.around(list(Intrinsic_utilities.iloc[_idx, 2:5]), decimals=3)
     utility_matrix.append(temp)
-
 utility_matrix = np.array(utility_matrix)
 
+# time
 Dwell_time = pd.read_excel(os.path.join(os.path.dirname(__file__), 'Database', 'Dwell time array.xlsx'),
                            index_col=0)
-# replace missing values by average of all samples
+
+# replace missing values by population average
 Dwell_time.loc[35, 'mean'] = Dwell_time['mean'][Dwell_time['mean'] != 5].mean()  # Attraction 35
 dwell_vector = np.array(Dwell_time['mean'])
 

@@ -1,5 +1,6 @@
 """ This script contains main method for multi-tasking module, the TTDP solver.
-Data Wrapping is executed in parent script to avoid repetitive I/Os"""
+Data Wrapping is executed in parent script to avoid repetitive I/Os.
+Added codes in main script to test and print route utilties. <- last update on Dec.25"""
 
 import numpy as np
 import multiprocessing as mp
@@ -2034,11 +2035,10 @@ if __name__ == '__main__':
     path_pdt = []
     path_obs = list(np.array(observed_path) - 1)
 
-
-
     for _ in range(len(path_obs) - 1):
         edge_tmp = path_obs[_], path_obs[_ + 1]
-        print('Edge travel utility of {}: {:.1f}'.format(edge_tmp, Solver_ILS.arc_util_callback(edge_tmp[0], edge_tmp[1])))
+        print('Edge travel utility of {}: {:.1f}'.format(edge_tmp,
+                                                         Solver_ILS.arc_util_callback(edge_tmp[0], edge_tmp[1])))
 
     print('\n')
     Solver_ILS.eval_util_print(path_obs)

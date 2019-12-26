@@ -100,6 +100,7 @@ def eval_util(_route):  # use array as input
 
 def eval_util_print(_route):  # use array as input
     """Print detailed route utility gains by segments"""
+    print('Current route is {}. In evaluation. below indices start from 0'.format(list(np.array(_route) + 1)))
     _pref = Agent.pref
     res, _accum_util = 0, np.zeros([3])
 
@@ -112,16 +113,17 @@ def eval_util_print(_route):  # use array as input
             # arc and node utility
             edge_cost = arc_util_callback(_route[_k - 1], _route[_k])
             node_visit_gain = node_util_callback(_route[_k], _accum_util)
-            print('{}: Currrent travel {} costs {:.2f}, node visit {} gains {:.2f}'.format(_k, (_route[_k - 1], _route[_k]),
-                                                                                   edge_cost, _route[_k],
-                                                                                   node_visit_gain))
+            print('{}: Currrent travel {} costs {:.2f}, node visit {} gains {:.2f}'.format(_k,
+                                                                                           (_route[_k - 1], _route[_k]),
+                                                                                           edge_cost, _route[_k],
+                                                                                           node_visit_gain))
             res += edge_cost + node_visit_gain
             print('{}: Current utility gained: {:.2f}\n'.format(_k, res))
 
             _accum_util += exp_util_callback(_route[_k], _accum_util)  # Accumulated utility; travel history
         edge_cost = arc_util_callback(_route[_k], _route[_k + 1])
         res += edge_cost
-        print('{}: Final travel {} costs {:.2f}'.format(_k, (_route[_k - 1], _route[_k]), edge_cost))
+        print('{}: Final travel {} costs {:.2f}'.format(_k + 1, (_route[_k - 1], _route[_k]), edge_cost))
         print('Final score: {:.2f}'.format(res))
     pass
 
