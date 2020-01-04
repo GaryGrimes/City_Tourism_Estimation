@@ -23,8 +23,9 @@ def print_path(path_to_print):
 # %% setting up nodes
 node_num = 37  # Number of attractions. Origin and destination are excluded.
 
-# attraction utility was not sorted by index previously
+# Important: attraction utility was not sorted by index previously
 # todo: consider replace util in 1-6-8 by (gourmet utiltity + red leave and shrines)
+
 Intrinsic_utilities = pd.read_excel(os.path.join(os.path.dirname(__file__), 'Database', 'Intrinsic Utility.xlsx'),
                                     sheet_name='data')
 utility_matrix = []

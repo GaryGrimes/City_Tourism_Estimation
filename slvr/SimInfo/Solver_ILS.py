@@ -4,7 +4,9 @@
 import numpy as np
 import pandas as pd
 import os
-import Agent, Network
+import Agent
+import Network
+import math
 
 # behavioral parameters
 alpha = []  # 1 * 2 vector
@@ -14,6 +16,56 @@ phi = 0  # float, to transform monetary unit into time
 # instances of nodes and egdes contains solver methods. Thus they are in the same category with solver methods.
 Node_list = []
 Edge_list = []
+
+# boundaries and centers of attraction areas
+
+area_centers = {1: [135.8246, 35.095],
+                2: [135.764472, 35.1156085],
+                3: [135.778122, 35.069874999999996],
+                4: [135.75400000000002, 35.058],
+                5: [135.675, 35.05715],
+                6: [135.80105, 35.049549999999996],
+                7: [135.73067450000002, 35.053399],
+                8: [135.7637, 35.048950000000005],
+                9: [135.74714999999998, 35.04375],
+                10: [135.7295, 35.039550000000006],
+                11: [135.77275, 35.03505],
+                12: [135.73675, 35.03105],
+                13: [135.7188, 35.031949999999995],
+                14: [135.67745, 35.02485],
+                15: [135.79863, 35.02693],
+                16: [135.7942, 35.01745],
+                17: [135.78395, 35.0169],
+                18: [135.76330000000002, 35.025999999999996],
+                19: [135.72289999999998, 35.022400000000005],
+                20: [135.7489, 35.0143],
+                21: [135.7394, 35.011449999999996],
+                22: [135.70925, 35.01535],
+                23: [135.67415, 35.01465],
+                24: [135.77935000000002, 35.00375],
+                25: [135.7656, 35.0051],
+                26: [135.68455, 34.995999999999995],
+                27: [135.7806, 34.99435],
+                28: [135.77100000000002, 34.989149999999995],
+                29: [135.7548, 34.9893],
+                30: [135.71025, 34.98355],
+                31: [135.7758, 34.97985],
+                32: [135.7465, 34.981049999999996],
+                33: [135.77625, 34.9675],
+                34: [135.82065, 34.9511],
+                35: [135.74743, 34.950225],
+                36: [135.75799999999998, 34.9313],
+                37: [135.66645, 35.16765],
+                39: [135.7594209, 34.9963851],
+                38: [135.7594209, 34.9963851],
+                41: [135.7583234, 34.9853387],
+                40: [135.7583234, 34.9853387],
+                42: [135.73208, 34.98115],
+                43: [135.76882, 35.00372],
+                44: [135.77217, 35.00886],
+                45: [135.761225, 34.945958],
+                46: [[135.7923442, 35.0581761], [135.6814425, 35.0164451]],
+                47: [135.7596385, 35.010865]}
 
 
 # -------- node setup -------- #
@@ -227,18 +279,72 @@ def shake(order, s, r):
     return path_temp
 
 
-def path_penalty(p_a, p_b):
+def haver_dist(lon1, lat1, lon2, lat2):
+    """Input: geological coordinates of two locations, in a list [lon, lat]. Output:
+    Eculidian distance between the two locations in meters."""
+
+    b = math.pi / 180
+    c = math.sin((lat2 - lat1) * b / 2)
+    d = math.sin((lon2 - lon1) * b / 2)
+    a = c * c + d * d * math.cos(lat1 * b) * math.cos(lat2 * b)
+    return 12756274 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def find_path_center(_path):
+    """find geological center of all visited nodes in the observed path (center of gravity)"""
+
+    _saved, _to_decide = [], []
+    for _ in _path:
+        _visit_norm = _ + 1  # destinations from the survey start from 1
+        if isinstance(area_centers[_visit_norm][0], float):
+            _saved.append(area_centers[_visit_norm])
+        else:
+            _to_decide.extend(area_centers[_visit_norm])
+    # find most possible transit entrance by taking the one closer to the path center
+    _cur_center = [np.mean(np.array(_saved)[:, 0]), np.mean(np.array(_saved)[:, 1])]  # long, lat
+
+    _res, _dis = None, None
+    for _node in _to_decide:
+        temp = haver_dist(*_cur_center, *_node)
+        if not _dis:
+            _dis = temp
+            _res = _node
+        else:
+            if temp < _dis:
+                _dis = temp
+                _res = _node
+    # combine
+    if _res:
+        _saved.append(_res)
+
+    # calculate center
+    _final_center = [np.mean(np.array(_saved)[:, 0]), np.mean(np.array(_saved)[:, 1])]  # lon, lat
+    return _final_center
+
+
+def path_penalty(path_obs, path_pdt):
+    """Calculates the difference between observed and predicted path in meters.
+    Insertion cost is defined as the haversine distance between inserted nodes and the center of observed path."""
+
     distance_matrix = Network.dist_mat
-    # path_a and path_b both starts from 0. offset starts from 0, i.e., 0 --> 1st destination
-    if p_a[0] != p_b[0] or p_a[-1] != p_b[-1]:
+    # node indices in path_a and path_b are both standardised, i.e. starting from 0.
+    if path_obs[0] != path_pdt[0] or path_obs[-1] != path_pdt[-1]:
         raise ValueError('Paths have different o or d.')
 
     # define insertion cost
-    o, d = p_a[0], p_a[-1]
-    insertion_cost = [distance_matrix[o][_] + distance_matrix[_][d] for _ in range(distance_matrix.shape[0])]
+    o, d = path_obs[0], path_obs[-1]
+
+    # ----- construction ---- #
+
+    # insertion_cost = [distance_matrix[o][_] + distance_matrix[_][d] for _ in range(distance_matrix.shape[0])]
+
+    # compare the distance between the center of observed path and the inserted node as the insertion cost
+    center_obs = find_path_center(path_obs)
+
+    insertion_cost = [haver_dist(*center_obs, *area_centers[_ + 1]) for _ in range(len(Node_list))]
 
     # check empty path
-    path_a, path_b = p_a[1:-1], p_b[1:-1]
+    path_a, path_b = path_obs[1:-1], path_pdt[1:-1]
     if not path_a or not path_b:
         if not path_a and not path_b:  # if all empty
             return 0
@@ -255,13 +361,7 @@ def path_penalty(p_a, p_b):
                 _ = 0
             return _
 
-    # if both paths are not empty (excluding o, d)
-
     # check node indices. Observed path with Detailed location (58) or unclear places (99) were skipped.
-    # TODO Better to omit outbound visits in the path rather than skip to next tourist. Completed in DataWrapping.
-    # max_idx = max(max(path_a), max(path_b))
-    # if max_idx > min(distance_matrix.shape) - 1:
-    #     return 0
 
     rows, cols = len(path_a) + 1, len(path_b) + 1
 
@@ -291,6 +391,70 @@ def path_penalty(p_a, p_b):
 
     # TODO case when path length equal
 
+
+# def path_penalty(p_a, p_b):
+#     distance_matrix = Network.dist_mat
+#     # path_a and path_b both starts from 0. offset starts from 0, i.e., 0 --> 1st destination
+#     if p_a[0] != p_b[0] or p_a[-1] != p_b[-1]:
+#         raise ValueError('Paths have different o or d.')
+#
+#     # define insertion cost
+#     o, d = p_a[0], p_a[-1]
+#     insertion_cost = [distance_matrix[o][_] + distance_matrix[_][d] for _ in range(distance_matrix.shape[0])]
+#
+#     # check empty path
+#     path_a, path_b = p_a[1:-1], p_b[1:-1]
+#     if not path_a or not path_b:
+#         if not path_a and not path_b:  # if all empty
+#             return 0
+#         elif path_a:  # path b is empty
+#             try:
+#                 _ = sum([max(distance_matrix[x]) for x in path_a])  # 19-10-03: take the largest distance
+#             except IndexError:
+#                 _ = 0
+#             return _
+#         else:  # path a is empty
+#             try:
+#                 _ = sum([max(distance_matrix[x]) for x in path_b])  # calculate most distant results
+#             except IndexError:
+#                 _ = 0
+#             return _
+#
+#     # if both paths are not empty (excluding o, d)
+#
+#     # check node indices. Observed path with Detailed location (58) or unclear places (99) were skipped.
+#     # TODO Better to omit outbound visits in the path rather than skip to next tourist. Completed in DataWrapping.
+#     # max_idx = max(max(path_a), max(path_b))
+#     # if max_idx > min(distance_matrix.shape) - 1:
+#     #     return 0
+#
+#     rows, cols = len(path_a) + 1, len(path_b) + 1
+#
+#     # the editing distance matrix
+#     dist = [[0 for _ in range(cols)] for _ in range(rows)]
+#     # source prefixes can be transformed into empty strings
+#
+#     # by deletions:
+#     for row in range(1, rows):
+#         dist[row][0] = dist[row - 1][0] + insertion_cost[path_a[row - 1]]
+#     # target prefixes can be created from an empty source string
+#
+#     # by inserting the characters
+#     for col in range(1, cols):
+#         dist[0][col] = dist[0][col - 1] + insertion_cost[path_b[col - 1]]
+#
+#     for col in range(1, cols):
+#         for row in range(1, rows):
+#             deletes = insertion_cost[path_a[row - 1]]
+#             inserts = insertion_cost[path_b[col - 1]]
+#             subs = distance_matrix[path_a[row - 1]][path_b[col - 1]]  # dist from a to b
+#
+#             dist[row][col] = min(dist[row - 1][col] + deletes,
+#                                  dist[row][col - 1] + inserts,
+#                                  dist[row - 1][col - 1] + subs)  # substitution
+#     return dist[row][col]
+#
+#     # TODO case when path length equal
 
 def geo_dist_penalty(p_a, p_b):  # created on Nov.3 2019
     """Pa is observed path, Pb predicted"""
@@ -339,5 +503,5 @@ def geo_dist_penalty(p_a, p_b):  # created on Nov.3 2019
 if __name__ == '__main__':
     # %% create node instances
     # assign values to node instances
-
+    print(find_path_center([45, 23, 27, 29, 21, 40]))
     pass

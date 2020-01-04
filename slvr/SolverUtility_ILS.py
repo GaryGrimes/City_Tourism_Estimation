@@ -9,6 +9,7 @@ import datetime
 import pickle
 import os
 import SimDataProcessing as sim_data
+import pandas as pd
 
 
 class Tourist(object):
@@ -1944,6 +1945,8 @@ class SolverUtility(object):
 if __name__ == '__main__':
     # debug
     # Data preparation
+    # %% read place code
+    place_jp = pd.read_excel(os.path.join(os.path.dirname(__file__), 'Database', 'Place_code.xlsx'))
     # %% read tourist agents
     with open(os.path.join(os.path.dirname(__file__), 'Database', 'transit_user_database.pickle'),
               'rb') as file:
@@ -1982,7 +1985,7 @@ if __name__ == '__main__':
     s_opt = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
 
     # pass variables
-    alpha, beta = s_opt[:2], [5] + s_opt[2:]  # intercept at 5 too small? Set to 100
+    alpha, beta = s_opt[:2], [100] + s_opt[2:]  # intercept at 5 too small? Set to 100
     util_matrix, time_matrix, cost_matrix, dwell_matrix, dist_matrix = \
         utility_matrix, edge_time_matrix, edge_cost_matrix, dwell_vector, edge_distance_matrix
 
@@ -2042,3 +2045,27 @@ if __name__ == '__main__':
 
     print('\n')
     Solver_ILS.eval_util_print(path_obs)
+
+    # %% test path penalty function
+    path_a, path_b = [28, 27, 26, 23, 24, 28], [28, 27, 23, 24, 28]
+    path_d = [28, 20, 13, 22, 25, 28]
+    path_c = [28, 22, 23, 24, 23, 28]
+
+    # print paths
+    print('\nPrint current paths:')
+    tmp = list(path_a)
+    print('Paht_a:')
+    while tmp:
+        cur = tmp.pop(0)
+        print(place_jp.name[cur] + ' -> ', end=' ') if tmp else print(place_jp.name[cur])
+
+    tmp = list(path_b)
+    print('Paht_b:')
+    while tmp:
+        cur = tmp.pop(0)
+        print(place_jp.name[cur] + ' -> ', end=' ') if tmp else print(place_jp.name[cur])
+
+    penalty_LD = Solver_ILS.path_penalty(path_a, path_b)
+    penalty_SimGeo = Solver_ILS.geo_dist_penalty(path_a, path_b)
+    print('Penalty LD: {:.2f} m, Geo_dist: {} m'.format(penalty_LD, penalty_SimGeo))
+

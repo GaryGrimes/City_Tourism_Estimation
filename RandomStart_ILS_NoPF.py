@@ -145,7 +145,9 @@ if __name__ == '__main__':
             print('Starting process {} in {}'.format(idx + 1, len(s)))
 
             ALPHA = parameter[:2]
-            BETA = [5] + parameter[2:]
+            # intercept changed from 5 to 100 !!!
+
+            BETA = [100] + parameter[2:]
             data_input = {'alpha': ALPHA, 'beta': BETA,
                           'phi': phi,
                           'util_matrix': utility_matrix,

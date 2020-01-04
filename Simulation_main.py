@@ -402,6 +402,9 @@ if __name__ == '__main__':
     enumerated_usrs, obs_trip_table = parse_observed_trips(agent_database)
 
     # observed trip tables 要不要scaled to the whole population's size?
+    write_flag = 0
+    if write_flag:
+        pd.DataFrame(obs_trip_table).to_excel('Observed trip frequency (PT only).xlsx')
 
     # predicted trip tables
     s_opt = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]

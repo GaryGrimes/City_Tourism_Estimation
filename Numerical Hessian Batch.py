@@ -4,7 +4,7 @@ import sympy
 import os
 import pickle
 import slvr.SimDataProcessing as sim_data
-import pandas as pd
+import datetime
 import math
 import multiprocessing as mp
 from SolverUtility_ILS import SolverUtility
@@ -72,7 +72,9 @@ def eval_fun(s):
 
     for idx, chunk in enumerate(pop):
         alpha = list(s[:2])
-        beta = [5] + list(s[2:])
+        # 5 was replaced by a larger value of 100!!!
+
+        beta = [100] + list(s[2:])
         data_input = {'alpha': alpha, 'beta': beta,
                       'phi': phi,
                       'util_matrix': utility_matrix,
@@ -98,6 +100,53 @@ def eval_fun(s):
         else:
             penalty_total += penalty_queue.get()[1]  # 0是index，1才是data
     return penalty_total  # unit transformed from km to m
+
+
+def eval_fun_norm(s, pnty_null):
+    # penalty in null case
+
+    # divide population into chunks to initiate multi-processing.
+    n_cores = mp.cpu_count()
+    pop = chunks(agent_database, n_cores)
+    # for i in pop:
+    #     print(len(i))  # 尽可能平均
+
+    jobs = []
+    penalty_queue = mp.Queue()  # queue, to save results for multi_processing
+
+    # start process
+
+    for idx, chunk in enumerate(pop):
+        alpha = list(s[:2])
+        # 5 was replaced by a larger value of 100
+        beta = [100] + list(s[2:])
+        data_input = {'alpha': alpha, 'beta': beta,
+                      'phi': phi,
+                      'util_matrix': utility_matrix,
+                      'time_matrix': edge_time_matrix,
+                      'cost_matrix': edge_cost_matrix,
+                      'dwell_matrix': dwell_vector,
+                      'dist_matrix': edge_distance_matrix}
+
+        process = mp.Process(target=SolverUtility.solver, args=(penalty_queue, idx, node_num, chunk),
+                             kwargs=data_input, name='P{}'.format(idx + 1))
+        jobs.append(process)
+        process.start()
+
+    for j in jobs:
+        # wait for processes to complete and join them
+        j.join()
+
+    # retrieve parameter penalties from queue
+    penalty_total = 0
+    while True:
+        if penalty_queue.empty():  # 如果队列空了，就退出循环
+            break
+        else:
+            penalty_total += penalty_queue.get()[1]  # 0是index，1才是data
+
+    pnty_normed = (pnty_null - penalty_total) / pnty_null
+    return pnty_normed  # unit transformed from km to m
 
 
 # %% simple example illustration
@@ -202,5 +251,22 @@ if __name__ == '__main__':
     # numerical gradient using * parameter
     s = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
 
-    res_Grad = nd.Gradient(eval_fun)(s)
-    res_Hessian = nd.Hessian(eval_fun)(s)
+    # calculate evaluation time
+    start_time = datetime.datetime.now()
+
+    print('Penalty for current parameter: {}'.format(eval_fun(s)))
+
+    end_time = datetime.datetime.now()
+    print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
+
+    # res_Grad = nd.Gradient(eval_fun)(s)
+    # res_Hessian = nd.Hessian(eval_fun)(s)
+
+    # %% test for null case
+    # calculate evaluation time
+    start_time = datetime.datetime.now()
+
+    print('Penalty for null case: {}'.format(eval_fun([0, 0, 0, 0])))
+
+    end_time = datetime.datetime.now()
+    print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
