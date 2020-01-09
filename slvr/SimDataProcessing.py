@@ -99,4 +99,4 @@ if len(dwell_vector) != node_num:
 # %% setting up behavior parameters
 phi = 0.1
 
-print('Simulation data processing complete.')
+# print('Simulation data processing complete.')
