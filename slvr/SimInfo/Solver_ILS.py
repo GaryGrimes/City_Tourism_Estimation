@@ -156,7 +156,7 @@ def eval_util_print(_route):  # use array as input
     _pref = Agent.pref
     res, _accum_util = 0, np.zeros([3])
 
-    print('Printing detailed route utility gains...')
+    print('Printing detailed route utility gains...\n')
     if len(_route) <= 2:
         return float("-inf")
     else:
@@ -170,9 +170,11 @@ def eval_util_print(_route):  # use array as input
                                                                                            edge_cost, _route[_k],
                                                                                            node_visit_gain))
             res += edge_cost + node_visit_gain
-            print('{}: Current utility gained: {:.2f}\n'.format(_k, res))
+            print('{}: Current utility gained: {:.2f}'.format(_k, res))
 
             _accum_util += exp_util_callback(_route[_k], _accum_util)  # Accumulated utility; travel history
+            print('{}: Current accumulated utility: {}\n'.format(_k, _accum_util))
+
         edge_cost = arc_util_callback(_route[_k], _route[_k + 1])
         res += edge_cost
         print('{}: Final travel {} costs {:.2f}'.format(_k + 1, (_route[_k - 1], _route[_k]), edge_cost))

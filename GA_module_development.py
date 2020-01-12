@@ -124,6 +124,8 @@ plt.title("Parameter update process")
 plt.legend(['average', 'best'], loc='best')
 plt.show()
 
+print('Penalty 为1、score接近1的时候最好')
+
 # TODO score 应为 1/penalty
 
 # TODO 计算每一组参数的objective func的时候，用dict存储当memo. if parameters not in memo, 写入。然后从memo里读取

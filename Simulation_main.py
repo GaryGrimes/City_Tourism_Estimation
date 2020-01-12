@@ -437,3 +437,25 @@ if __name__ == '__main__':
     else:
         pass
 
+    # %% histogram of total visited attractions
+    visited_cnt = []
+    for _ in agent_database:
+        visited_cnt.append(len(_.path_obs) - 2)
+
+    #  matplotlib.axes.Axes.hist() 方法的接口
+    # bins_range = np.array([_ for _ in range(max(visited_cnt) + 2)])
+
+    bins_range = np.arange(0, max(visited_cnt) + 1.5) - 0.5
+
+    fig, ax = plt.subplots(dpi=200)
+    n, bins, patches = ax.hist(x=visited_cnt, bins=bins_range, color='#0504aa',
+                               alpha=0.6, rwidth=0.85)
+    plt.grid(axis='y', alpha=0.75)
+    plt.xlabel('Places visited')
+    plt.ylabel('Frequency')
+    plt.title('An histogram of total places visited')
+
+    plt.show()
+    # maxfreq = n.max()
+    # # 设置y轴的上限
+    # plt.ylim(ymax=np.ceil(maxfreq / 10) * 10 if maxfreq % 10 else maxfreq + 10)

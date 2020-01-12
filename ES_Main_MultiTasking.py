@@ -294,20 +294,12 @@ if __name__ == '__main__':
 
     # sort values by penalty
     temp_df = initial_eval_res.sort_values(by=['penalty'])
-    s = temp_df.loc[:, 'a1':'b3'].values[:(POP_SIZE - 2)].tolist()
+    s = temp_df.loc[:, 'a1':'b3'].values[:(POP_SIZE - 2)]
 
-    # s = [[1.0, 0.03, 0.3, 0.1],
-    #      [1.0, 0.03, 1.0, 0.1],
-    #      [0.03, 0.01, 3.0, 0.03],
-    #      [1.0, 0.03, 3.0, 0.1],
-    #      [1.0, 0.03, 0.1, 0.1],
-    #      [1.0, 0.03, 0.03, 0.1],
-    #      [1.0, 0.01, 0.1, 0.1],
-    #      [1.0, 0.03, 0.01, 0.1],
-    #      [3.0, 0.1, 1.0, 0.3],
-    #      [1.0, 0.01, 0.01, 0.1],
-    #      [0.3, 0.01, 0.3, 0.03]]
-    #
+    # alpha1 and alpha2 should have negative values!
+    s[:, :2] = -s[:, :2]
+    s = s.tolist()
+
     for i in range(POP_SIZE - len(s)):  # to fill in s
         # random alphas
         a1, a2 = np.random.uniform(-0.5, -0.01), np.random.uniform(-0.5, -0.01)

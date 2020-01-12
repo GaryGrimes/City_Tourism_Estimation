@@ -252,7 +252,7 @@ if __name__ == '__main__':
     s = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
 
     # current near optimal after grid search (Jan. 9)
-    current_near_optimal = [1, 0.1, 10, 0.03]
+    current_near_optimal = [-1, -0.1, 10, 0.03]
 
     # calculate evaluation time
     start_time = datetime.datetime.now()

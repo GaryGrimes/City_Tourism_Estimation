@@ -1,7 +1,8 @@
-"""This script is the main component in the research framework.
-It is used to search for optimal behavioral parameter.
-Dependence includes the 'slvr' package, data wrapping and so on.
-Modified on Oct. 15. Last modified on Nov. 16"""
+"""This script is the main functionality in the research framework, used to search for optimal behavioral parameters.
+Compared with Evolutionary Strategy, this script utilizes random search GA for optimal search.
+Dependence includes the 'slvr' package, data wrapping and so on. Modified on Oct. 15. Last modified on Nov. 16
+Last modified on Jan. 11. Current code duplicates with ES_Main. Will be merged with MultiTasking.py.
+"""
 
 import numpy as np
 import pickle
@@ -33,6 +34,7 @@ def print_path(path_to_print):
 
 
 def penalty(particle):
+    ''' just for test '''
     _answer = [-0.02, -0.01, 0.3, 0.1]
     diff = np.array(_answer) - np.array(particle)
     _penalty = np.exp(np.linalg.norm(diff))
@@ -56,7 +58,7 @@ def score2penalty(*args):
 
 
 def evaluation(_s, _itr):
-    """Evaluation of each population using MultiProcessing. Results are returned to the mp.queue in form of tuples."""
+    """Evaluation of each population using MultiProcessing. Results are returned to the mp.queue in tuples."""
     global PARAMETER
     global memo_parameter, memo_penalty
     global phi, utility_matrix, dwell_vector, edge_time_matrix, edge_cost_matrix, edge_distance_matrix
@@ -81,7 +83,7 @@ def evaluation(_s, _itr):
                 idx, memo_parameter.index(parameter), memo_penalty[memo_parameter.index(parameter)]))
         else:
             ALPHA = list(parameter[:2])
-            BETA = [5] + list(parameter[2:])
+            BETA = [100] + list(parameter[2:])
             data_input = {'alpha': ALPHA, 'beta': BETA,
                           'phi': phi,
                           'util_matrix': utility_matrix,
@@ -133,57 +135,6 @@ def evaluation(_s, _itr):
         print('Parameter %d: a1: %.3f, a2: %.3f; b2: %.3f, b3: %.3f, with score: %.3e'
               % (_i + 1, _s[_i][0], _s[_i][1], _s[_i][2], _s[_i][3], _))
     return scores
-
-
-def make_kid(pop, n_kid):
-    # generate empty kid holder
-    kids = {'DNA': np.empty((n_kid, DNA_SIZE))}
-    kids['mut_strength'] = np.empty_like(kids['DNA'])
-
-    for kv, ks in zip(kids['DNA'], kids['mut_strength']):
-        # crossover (roughly half p1 and half p2)
-        p1, p2 = np.random.choice(np.arange(POP_SIZE), size=2, replace=False)  # parent 1, parent 2
-
-        cp = np.random.randint(0, 2, DNA_SIZE, dtype=np.bool)  # crossover points
-        kv[cp] = pop['DNA'][p1, cp]
-        kv[~cp] = pop['DNA'][p2, ~cp]
-        ks[cp] = pop['mut_strength'][p1, cp]
-        ks[~cp] = pop['mut_strength'][p2, ~cp]
-
-        # mutate (change DNA based on normal distribution)
-        ks[:] = np.maximum(ks + (np.random.rand(*ks.shape) - 0.5), 0.)  # must > 0
-        kv += ks * np.random.randn(*kv.shape)  # kv has size of 1 * DNA_SIZE
-
-        # clip the mutated value so that the values fall in the boundaries
-        kv[:] = list(np.clip(v, *DNA_BOUND[_i]) for _i, v in enumerate(kv))
-        ''' kv[:]  = 和 kv = 的区别：  Originally kv refers to the elements in kids['DNA']. 
-        后者把kv指代另一个变量了，而不改变zip里的element. 前者invokes slice assignment on the object kv refers to, 
-        thus making the contents of the original object (element in kids['DNA']) a copy of the contents of new values'''
-
-    """对于高维数组也是一样的
-    x=np.array([[1,2,3,5,6,7,8,9],[1,2,3,5,6,7,8,9]])
-    np.clip(x,3,8)
-
-    Out[90]:
-    array([[3, 3, 3, 5, 6, 7, 8, 8],
-           [3, 3, 3, 5, 6, 7, 8, 8]])
-    """
-    return kids
-
-
-def kill_bad(pop, _kids, _itr):
-    # put pop and kids together
-    for key in ['DNA', 'mut_strength']:
-        pop[key] = np.vstack((pop[key], _kids[key]))
-
-    fitness = evaluation(pop['DNA'], _itr)  # calculate global fitness
-    idx = np.arange(pop['DNA'].shape[0])  # create an array with range
-
-    good_idx = idx[fitness.argsort()][-POP_SIZE:]  # selected by fitness ranking (not value)
-    good_scores = fitness[fitness.argsort()][-POP_SIZE:]
-    for key in ['DNA', 'mut_strength']:
-        pop[key] = pop[key][good_idx]
-    return pop, good_scores
 
 
 def selection(s_size, _scores):
@@ -246,7 +197,7 @@ def mutation(prob, best_score, population, population_scores):
 
 if __name__ == '__main__':
     # %% Solver Setup
-    #  read tourist agents
+    # read tourist agents
     with open(os.path.join(os.path.dirname(__file__), 'slvr', 'Database', 'transit_user_database.pickle'),
               'rb') as file:
         agent_database = pickle.load(file)  # note: agent = tourists here
@@ -271,12 +222,10 @@ if __name__ == '__main__':
     # %% parameter setup
     phi = sim_data.phi
 
-    # 'Evolution Strategy' parameter setup
-    DNA_SIZE = 4  # DNA (real number)
-    DNA_BOUND = [[-10, 0], [-10, 0], [0, 10], [0, 10]]  # solution upper and lower bounds
-    N_GENERATIONS = 200
-    POP_SIZE = 12  # population size (each individual in current generation is a vector of behavioral parameters)
-    N_KID = 12  # n kids per generation
+    # parameter setup
+    inn = 16  # species size (each individual in current generation is a vector of behavioral parameters
+    itr_max = 200
+    prob_mut = 1  # parameter mutation probability (always mutate to go random search)
 
     memo_parameter, memo_penalty = [], []  # memo stores parameters from last 2 iterations
     PARAMETER = {}  # save parameters in each iteration
@@ -288,47 +237,61 @@ if __name__ == '__main__':
     # parameter = [-0.05, -0.05, 0.03, 0.1]
     # s = [[]]  # todo initialize s with good results in initialization evaluation
 
-    s = [[1.0, 0.03, 0.3, 0.1],
-         [1.0, 0.03, 1.0, 0.1],
-         [0.03, 0.01, 3.0, 0.03],
-         [1.0, 0.03, 3.0, 0.1],
-         [1.0, 0.03, 0.1, 0.1],
-         [1.0, 0.03, 0.03, 0.1],
-         [1.0, 0.01, 0.1, 0.1],
-         [1.0, 0.03, 0.01, 0.1],
-         [3.0, 0.1, 1.0, 0.3],
-         [1.0, 0.01, 0.01, 0.1],
-         [0.3, 0.01, 0.3, 0.03]]
+    initial_eval_filename = 'Initialization objective values ILS_PF_NewLD.xlsx'  # generated on Jan. 10
+    initial_eval_res = pd.read_excel(
+        os.path.join(os.path.dirname(__file__), 'Evaluation result', initial_eval_filename), index_col=0)
 
-    for i in range(POP_SIZE - len(s)):  # to fill in s
-        # random alphas
-        a1, a2 = np.random.uniform(-0.5, -0.01), np.random.uniform(-0.5, -0.01)
-        # random betas
-        b2, b3 = np.random.uniform(0.01, 0.3), np.random.uniform(0.02, 1)
-        s.append([a1, a2, b2, b3])
+    # sort values by penalty
+    temp_df = initial_eval_res.sort_values(by=['penalty'])
+    s = temp_df.loc[:, 'a1':'b3'].values[:(inn)]
 
-    mut_strength = [[0.2 * _ * np.random.rand() for _ in j] for j in s]  # 1/5 the DNA value
-
-    POP = dict(DNA=np.array(s),  # initialize the pop DNA values
-               mut_strength=np.array(mut_strength))  # initialize the pop mutation strength values
+    # alpha1 and alpha2 should have negative values!
+    s[:, :2] = -s[:, :2]
+    s = s.tolist()
 
     # start iterations
     para_record = float('-inf')
-    for iteration in range(N_GENERATIONS):
-        # ES part
-        kids = make_kid(POP, N_KID)
-        POP, SCORES = kill_bad(POP, kids, iteration)  # keep some good parent for elitism
-        # retrieve data for current iteration
+    for iteration in range(itr_max):
+        # evaluation
+        SCORES = evaluation(s, iteration)  # iteration 0 = initialization evaluation
+
+        # selection
+        Indices = selection(inn, SCORES)
+
+        s = list(s[_] for _ in Indices)
+        # Scores of selected individuals
+        SCORES = list(SCORES[_] for _ in Indices)  # s and SCORES should have same dimension
+
+        print('Iteration {}: SCORES:\n'.format(iteration + 1))
+        for i, _ in enumerate(Indices):
+            print(
+                'Parameter %d: a1: %.3f, a2: %.3f; b2: %.3f, b3: %.3f, with score: %.3e' % (i + 1, s[i][0],
+                                                                                            s[i][1],
+                                                                                            s[i][2],
+                                                                                            s[i][3],
+                                                                                            SCORES[i]))
+
         Best_score = max(SCORES)
 
         para_record = max(Best_score, para_record)  # duplicate 'record' use in the optimal solver module
 
+        # write generation record and scores
         gnr_max.append(Best_score)
         y_mean.append(np.mean(SCORES))
         y_max.append(para_record)
-        x_max.append(POP['DNA'][SCORES.argsort()][-1])  # pick the last one with highest score. x_max
-        # print evaluation scores
+        x_max.append(s[np.argsort(SCORES)[-1]])  # pick the last one with highest score. x_max
 
+        # mutation to produce next generation
+        s = mutation(prob_mut, para_record, s, SCORES)  # mutation generates (inn + insertion size) individuals
+
+        print('\nMutated parameters(individuals) for iteration {}: '.format(iteration + 1))
+        for i in range(len(s)):
+            print(
+                'Parameter %d: a1: %.3f, a2: %.3f; b2: %.3f, b3: %.3f\n' % (i + 1, s[i][0],
+                                                                            s[i][1],
+                                                                            s[i][2],
+                                                                            s[i][3],
+                                                                            ))
         # %% plot
         if iteration > 20:
             try:
@@ -347,25 +310,25 @@ if __name__ == '__main__':
             except:
                 pass
 
-        # %% save results into DF
-        Res = pd.DataFrame(
-            columns=['itr', 'a1', 'a2', 'b2', 'b3', 'penalty', 'score', 'record_penalty', 'record', 'gnr_mean'])
-        Res['itr'] = range(N_GENERATIONS)
-        Res.loc[:, 'a1':'b3'] = x_max
-        Res['score'] = gnr_max
-        Res['penalty'] = score2penalty(gnr_max)[0]
-        Res['record_penalty'] = score2penalty(y_max)[0]
-        Res['record'] = y_max
-        Res['gnr_mean'] = y_mean
-        Res.to_excel('{} iteration result.xlsx'.format(os.path.basename(__file__).split('.')[0]))
+    # %% save results into DF
+    Res = pd.DataFrame(
+        columns=['itr', 'a1', 'a2', 'b2', 'b3', 'penalty', 'score', 'record_penalty', 'record', 'gnr_mean'])
+    Res['itr'] = range(itr_max)
+    Res.loc[:, 'a1':'b3'] = x_max
+    Res['score'] = gnr_max
+    Res['penalty'] = score2penalty(gnr_max)[0]
+    Res['record_penalty'] = score2penalty(y_max)[0]
+    Res['record'] = y_max
+    Res['gnr_mean'] = y_mean
+    Res.to_excel('{} iteration result.xlsx'.format(os.path.basename(__file__).split('.')[0]))
 
-        # save parameters into DF
-        for k, v in PARAMETER.items():
-            PARAMETER[k] = v.tolist()
-        df_parameter = pd.DataFrame.from_dict(PARAMETER, orient='index')
-        for i in range(df_parameter.shape[0]):
-            for j in range(df_parameter.shape[1]):
-                if df_parameter.loc[i, j]:
-                    df_parameter.loc[i, j] = [round(_, 3) for _ in np.array(df_parameter.loc[i, j])]
+    # save parameters into DF
+    for k, v in PARAMETER.items():
+        PARAMETER[k] = v.tolist()
+    df_parameter = pd.DataFrame.from_dict(PARAMETER, orient='index')
+    for i in range(df_parameter.shape[0]):
+        for j in range(df_parameter.shape[1]):
+            if df_parameter.loc[i, j]:
+                df_parameter.loc[i, j] = [round(_, 3) for _ in np.array(df_parameter.loc[i, j])]
 
-        df_parameter.to_excel('Parameter in each iteration.xlsx')
+    df_parameter.to_excel('Parameter in each iteration.xlsx')

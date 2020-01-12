@@ -1,4 +1,4 @@
-'''Modified on Oct. 15'''
+'''Modified on Oct. 15. Modified on Jan.11.'''
 
 import numpy as np
 import pickle
@@ -52,7 +52,8 @@ def score2penalty(*args):
 
 
 def selection(s_size, _scores):
-    insertion_size = 3
+    insertion_size = np.floor(s_size/5) + 1
+
     best_one_idx = np.argsort(_scores)[-1]
     f_sum = sum(_scores)
     prob = [_ / f_sum for _ in _scores]
@@ -270,7 +271,8 @@ if __name__ == '__main__':
                                                                                                            parameter)]))
         else:
             ALPHA = parameter[:2]
-            BETA = [5] + parameter[2:]
+            # BETA = [5] + parameter[2:]
+            BETA = [100] + parameter[2:]
             arg_input = {'alpha': ALPHA, 'beta': BETA, 'phi': phi,
                          'util_matrix': UtilMatrix, 'time_matrix': TimeMatrix, 'cost_matrix': CostMatrix,
                          'dwell_matrix': DwellArray, 'dist_matrix': DistMatrix}
@@ -319,6 +321,8 @@ if __name__ == '__main__':
                                                                                         s[i][2],
                                                                                         s[i][3],
                                                                                         _))
+
+    # Starting iterations
 
     for itr in range(itr_max):
         if itr > 0:

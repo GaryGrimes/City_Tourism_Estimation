@@ -2014,7 +2014,7 @@ if __name__ == '__main__':
     Solver_ILS.edge_setup(**edge_properties)
 
     pref = [0.5, 0.3, 0.3]  # just for test
-    observed_path = [29, 24, 25, 29]  # index starts from 1
+    observed_path = [29, 27, 24, 25, 29]  # index starts from 1
     t_max, origin, destination = 340, observed_path[0] - 1, observed_path[-1] - 1
 
     visit_history = {}
