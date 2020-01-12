@@ -74,7 +74,12 @@ def evaluation(_s, _itr):
     # evaluation with MultiProcessing for each parameter in current generation
     for idx, parameter in enumerate(_s):
         print('\nStarting process {} in {}'.format(idx + 1, len(_s)))
-        parameter = parameter.tolist()  # convert to list
+        # convert ndarray to list
+        try:
+            parameter = parameter.tolist()  # convert to list
+        except AttributeError:
+            pass
+
         # check existence of parameter in memory
         if parameter in memo_parameter:
             # sent back penalty tuple if exists in history
@@ -138,7 +143,8 @@ def evaluation(_s, _itr):
 
 
 def selection(s_size, _scores):
-    insertion_size = 3
+    insertion_size = np.floor(s_size / 5) + 1
+
     best_one_idx = np.argsort(_scores)[-1]
     f_sum = sum(_scores)
     prob = [_ / f_sum for _ in _scores]
@@ -155,6 +161,24 @@ def selection(s_size, _scores):
     indices.extend(insertion_size * [best_one_idx])
     return indices
 
+
+# def selection(s_size, _scores):
+#     insertion_size = 3
+#     best_one_idx = np.argsort(_scores)[-1]
+#     f_sum = sum(_scores)
+#     prob = [_ / f_sum for _ in _scores]
+#     # calculate accumulated prob
+#     prob_acu = [sum(prob[:_]) + prob[_] for _ in range(len(prob))]
+#     prob_acu[-1] = 1
+#
+#     # return selected idx
+#     indices = []
+#     for _ in range(s_size - insertion_size):
+#         random_num = np.random.rand()
+#         indices.append(next(_x[0] for _x in enumerate(prob_acu) if _x[1] > random_num))  # x is a tuple
+#     # insert best results from history
+#     indices.extend(insertion_size * [best_one_idx])
+#     return indices
 
 # todo: mutation process is to be modified.
 def mutation(prob, best_score, population, population_scores):
