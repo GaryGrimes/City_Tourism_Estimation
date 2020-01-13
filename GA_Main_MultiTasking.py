@@ -127,7 +127,11 @@ def evaluation(_s, _itr):
                 para_penalties.append(_tuple[1])  # Caution! 目前传回的tuple[1]是一个dict!!!
                 break
 
-    memo_parameter.extend(_s.tolist())
+    try:
+        memo_parameter.extend(_s.tolist())
+    except AttributeError:
+        memo_parameter.extend(_s)
+
     memo_penalty.extend(para_penalties)
 
     PARAMETER[_itr] = _s  # save parameters of each iteration into the PARAMETER dict.
@@ -143,7 +147,7 @@ def evaluation(_s, _itr):
 
 
 def selection(s_size, _scores):
-    insertion_size = np.floor(s_size / 5) + 1
+    insertion_size = int(s_size / 5) + 1
 
     best_one_idx = np.argsort(_scores)[-1]
     f_sum = sum(_scores)
@@ -217,6 +221,60 @@ def mutation(prob, best_score, population, population_scores):
     """ always preserve the best solution """
     species.extend(insertion_size * [best])
     return species
+
+
+def mutation_new(prob, best_score, population, population_scores, bounds=(10, 1, 10, 3)):
+    """ The mutation process after selection. An insersion of elite individuals will be performed as
+    an elite preservation strategy.Last modified on Jan. 13, 2020."""
+
+    if len(bounds) != len(population[0]):
+        raise ValueError('Bounds should have same number of entries as individuals.')
+    # insert elite individuals
+    insertion_size = int(len(population) / 3)
+
+    # learning_rate = [0.01, 0.01, 0.01, 0.02]
+    species = []
+
+    # pick the bests
+    population_sorted = [population[_] for _ in np.argsort(population_scores)]
+
+    # pick the largest 5 individuals to perform
+    for _index, _i in enumerate(population):
+        do_mut_prob = np.random.rand()
+        if do_mut_prob < prob:  # perform mutation, else pass
+            _new_individual = []
+
+            # compare the error between scores
+            _score = population_scores[_index]
+            _error = abs((_score - best_score) / best_score)
+
+            for _idx, _value in enumerate(_i):
+                bound = bounds[_idx]
+                _new_individual.append(value_mutation(_value, _error, bound))
+            species.append(_new_individual)
+        else:
+            species.append(_i)
+
+    # always preserve the individuals with high scores """
+    species.extend(population_sorted[-insertion_size:])
+    return species
+
+
+def value_mutation(cur_value, error, bound):
+    """Perform mutation to a current value with given mutation strength. Bound equals to learn rate."""
+    value_mut_strength = 2 * (np.random.rand() - 0.5)  # a value between -1 and 1
+    update_step = 0.01 * abs(bound)
+    weight = 4 * error  # 0 <= weight < 5
+
+    # purely random search outperforms converged search (referred to current optimal),
+    # becasue current optimal means nothing...
+
+    sway = value_mut_strength * ((1 + weight) * update_step)  # step (1, 5) of learn rate
+    while cur_value * (cur_value + sway) < 0:
+        value_mut_strength = 2 * (np.random.rand() - 0.5)  # a value between -1 and 1
+        sway = value_mut_strength * ((1 + weight) * update_step)  # step (1, 5) of learn rate
+    new_value = cur_value + sway
+    return new_value
 
 
 if __name__ == '__main__':
@@ -306,7 +364,7 @@ if __name__ == '__main__':
         x_max.append(s[np.argsort(SCORES)[-1]])  # pick the last one with highest score. x_max
 
         # mutation to produce next generation
-        s = mutation(prob_mut, para_record, s, SCORES)  # mutation generates (inn + insertion size) individuals
+        s = mutation_new(prob_mut, para_record, s, SCORES)  # mutation generates (inn + insertion size) individuals
 
         print('\nMutated parameters(individuals) for iteration {}: '.format(iteration + 1))
         for i in range(len(s)):
