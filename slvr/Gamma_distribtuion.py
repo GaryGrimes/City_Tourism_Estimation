@@ -33,7 +33,7 @@ xmin, xmax = 0, 5
 x = np.linspace(xmin, xmax, 200)
 
 exp_x = 3.5  # tourists perceive fatigue after visiting 3 to 4 sites. But the first several visits will not decrease so much
-scale = np.array([0.1, 0.2, 0.3, 0.5, 0.7])
+scale = np.array([0.1, 0.2, 0.3, 0.5, 0.7, 1.])
 k, theta = exp_x / scale, scale
 
 for i in zip(k, theta):

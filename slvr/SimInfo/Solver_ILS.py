@@ -112,7 +112,8 @@ def agent_setup(**kwargs):
 
 
 def arc_util_callback(from_node, to_node):
-    return alpha * Network.time_mat[from_node, to_node] + phi * Network.cost_mat[from_node, to_node]
+    # arc utility must at least be zero
+    return min(alpha * Network.time_mat[from_node, to_node], 0) + min(-phi * Network.cost_mat[from_node, to_node], 0)
 
 
 def node_util_callback(to_node, _accum_util):

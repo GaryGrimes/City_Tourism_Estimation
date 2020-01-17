@@ -11,7 +11,6 @@ import multiprocessing as mp
 import progressbar as pb
 import slvr.SimDataProcessing as sim_data
 
-
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
 
@@ -93,22 +92,16 @@ if __name__ == '__main__':
     phi = sim_data.phi
 
     core_process = mp.cpu_count()  # species size (each individual is our parameters here)
-    itv = [0.01, 0.03, 0.1, 0.3, 1, 3, 10]
-    size_itv = len(itv)
-    # create parameter columns
 
-    # create initial values of parameters
-    indices = [[(i // size_itv ** 3) % 7, (i // size_itv ** 2) % 7, (i // size_itv) % 7, i % 7] for i in
-               range(size_itv ** 4)]
+    # ranges for modified utility (gamma)
+    range_alpha = [-0.1, -0.3, -1, -3, -10, -30, -100]
+    range_intercept = [10, 30, 100, 300, 1000, 3000, 10000]
+    range_scale = [0.2, 0.3, 0.5, 0.8, 1.0]
+    exp_x = [3.5]
+
+    Population = [[i, j, q / p, p] for i in range_alpha for j in range_intercept for p in range_scale for q in exp_x]
+
     s = []
-
-    Population = [[itv[indices[j][i]] for i in range(4)] for j in range(len(indices))]
-
-    # alpha should have negative values
-    for _ in Population:
-        for j in range(len(_)):
-            if j < 2 and _[j] > 0:
-                _[j] = -_[j]
 
     # calculate score and record of the 1st generation
     time, itr = 0, 0
@@ -122,7 +115,7 @@ if __name__ == '__main__':
     ])
 
     progress.start()
-    pg_total = len(indices)  # for progressbar need to pre-calculate the total and current index
+    pg_total = len(Population)  # for progressbar need to pre-calculate the total and current index
 
     while Population:
         itr += 1
@@ -145,9 +138,9 @@ if __name__ == '__main__':
         for idx, parameter in enumerate(s):
             print('Starting process {} in {}'.format(idx + 1, len(s)))
 
-            ALPHA = parameter[:2]
-            # intercept changed from 5 to 100 !!!
-            BETA = [100] + parameter[2:]
+            ALPHA = parameter[0]
+
+            BETA = {'intercept': parameter[1], 'shape': parameter[2], 'scale': parameter[3]}
             data_input = {'alpha': ALPHA, 'beta': BETA,
                           'phi': phi,
                           'util_matrix': utility_matrix,
@@ -206,14 +199,14 @@ if __name__ == '__main__':
         del Population[:core_process]
 
     # %% save results into DF
-    Population = [[itv[indices[j][i]] for i in range(4)] for j in range(len(indices))]
+    Population = [[i, j, q / p, p] for i in range_alpha for j in range_intercept for p in range_scale for q in exp_x]
     Res = pd.DataFrame(columns=['index', 'a1', 'a2', 'b2', 'b3', 'penalty', 'score'])
     Res['index'] = range(len(Population))
     Res.loc[:, 'a1':'b3'] = Population
     Res['score'] = Population_scores
     Res['penalty'] = Population_penalties
 
-    file_name = 'ILS_PF_LD'  # ILS, with path threshold (filtering), with levenshtein distance
+    file_name = 'ILS_Gamma'  # ILS, with path threshold (filtering), with levenshtein distance
     Res.to_excel('Initialization objective values {}.xlsx'.format(file_name))
 
 # %%  todo build the queue check process, to read from queue as soon as it fills, so it never gets very large.
