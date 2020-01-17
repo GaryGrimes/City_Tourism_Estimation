@@ -7,6 +7,8 @@ import os
 import Agent
 import Network
 import math
+from scipy.stats import gamma
+
 
 # behavioral parameters
 alpha = []  # 1 * 2 vector
@@ -254,18 +256,18 @@ def insert(order, best_score):
         cur_node = Node_list[ii]
         if cur_node.visit == 0:
             for jj in range(1, len(order)):
-                path_temp = order[:jj] + [ii] + order[jj:]
+                path_temp = order[:jj] + [ii] + order[jj:]  # node index is ii
                 # check time budget feasibility
                 _feasibility = time_callback(path_temp) < t_max
                 # calculate utility and save best score and best position
                 if _feasibility:
                     _utility = eval_util(path_temp)
-                    if _utility > best_score:
+                    if _utility > best_score:  # update
                         best_score, best_node, best_pos = _utility, ii, jj
-                pass
 
     if best_score > check:
         order = order[:best_pos] + [best_node] + order[best_pos:]
+        # update the node list: flag the visited nodes
         for ii in range(1, len(order) - 1):
             Node_list[order[ii]].visit = 1
     else:

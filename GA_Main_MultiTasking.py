@@ -305,8 +305,11 @@ if __name__ == '__main__':
     phi = sim_data.phi
 
     # parameter setup
-    inn = 16  # species size (each individual in current generation is a vector of behavioral parameters
-    itr_max = 200
+    # inn=16
+    inn = 20  # species size (each individual in current generation is a vector of behavioral parameters
+
+    # itr_max = 200
+    itr_max = 300
     prob_mut = 1  # parameter mutation probability (always mutate to go random search)
 
     memo_parameter, memo_penalty = [], []  # memo stores parameters from last 2 iterations
@@ -320,8 +323,10 @@ if __name__ == '__main__':
     # s = [[]]  # todo initialize s with good results in initialization evaluation
 
     initial_eval_filename = 'Initialization objective values ILS_PF_NewLD.xlsx'  # generated on Jan. 10
+
     initial_eval_res = pd.read_excel(
-        os.path.join(os.path.dirname(__file__), 'Evaluation result', initial_eval_filename), index_col=0)
+        os.path.join(os.path.dirname(__file__), 'Evaluation result',
+                     'Jan 12 random GA', initial_eval_filename), index_col=0)
 
     # sort values by penalty
     temp_df = initial_eval_res.sort_values(by=['penalty'])

@@ -146,7 +146,7 @@ class SolverUtility(object):
                     if s >= min(_u8):
                         s = s - min(_u8) + 1
 
-                    order = Solver_ILS.shake(order, s, R)
+                    order = Solver_ILS.shake(order, s, R)  # break sequence
 
             # print('Near optimal path: {}, with total time {} min, utility {}.'.format(final_order,
             #                                                                           Solver_ILS.time_callback(

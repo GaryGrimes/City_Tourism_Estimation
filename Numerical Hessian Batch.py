@@ -102,7 +102,7 @@ def eval_fun(s):  # s is a single set of parameters, not species
     return penalty_total
 
 
-def eval_fun_norm(s, pnty_null):
+def eval_fun_norm(s):
     # penalty in null case
 
     # divide population into chunks to initiate multi-processing.
@@ -145,7 +145,8 @@ def eval_fun_norm(s, pnty_null):
         else:
             penalty_total += penalty_queue.get()[1]  # 0是index，1才是data
 
-    pnty_normed = min((pnty_null - penalty_total) / pnty_null, 0)
+    pnty_null = 22112.89
+    pnty_normed = max((pnty_null - penalty_total) / pnty_null, 0)
     return pnty_normed  # unit transformed from km to m
 
 
@@ -252,43 +253,47 @@ if __name__ == '__main__':
     s = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
 
     # current near optimal after grid search (Jan. 9)
-    current_near_optimal = [-1, -0.1, 10, 0.03]
+    near_optimal = [-1, -0.1, 10, 0.03]
+    current_optimal = [-2.966, -0.310, 10.000, 0.031]
 
     # calculate evaluation time
     start_time = datetime.datetime.now()
-
-    res = eval_fun(current_near_optimal)
-    print('Penalty for current parameter: {}'.format(res))
-
+    res = eval_fun(near_optimal)
+    print('Penalty for near optimal: {}'.format(res))
     end_time = datetime.datetime.now()
     print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
 
-    print('Evaluated penalty: %.2f, grid search penalty %.2f' % (res, 10877.46091))
-
-    # %% test for null case
     # calculate evaluation time
     start_time = datetime.datetime.now()
-
-    # penalty of the null case
-    penalty_null = eval_fun([0, 0, 0, 0])
-
-    print('Penalty for null case: {}'.format(penalty_null))
-
+    res = eval_fun(current_optimal)
+    print('Penalty for current optimal: {}'.format(res))
     end_time = datetime.datetime.now()
-
     print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
 
-    print('Evaluated penalty for the null case: %.2f' % penalty_null)
+    print('Evaluated penalty: %.2f, grid search penalty %.2f' % (res, 10950.17261633345))
+    #
+    # # %% test for null case
+    # # calculate evaluation time
+    # start_time = datetime.datetime.now()
+    #
+    # # penalty of the null case
+    # penalty_null = eval_fun([0, 0, 0, 0])
+    #
+    # print('Penalty for null case: {}'.format(penalty_null))
+    #
+    # end_time = datetime.datetime.now()
+    #
+    # print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
+    #
+    # print('Evaluated penalty for the null case: %.2f' % penalty_null)
 
     # %% numerical hessian and gradients
 
-    # res_Grad = nd.Gradient(eval_fun)(s)
-    res_Hessian = nd.Hessian(eval_fun_norm)(current_near_optimal, penalty_null)
-
-    print('Numerical Hessian at {}, with value: {}'.format(current_near_optimal,
-                                                           np.array(current_near_optimal) / std_err))
+    res_Grad = nd.Gradient(eval_fun)(s)
+    res_Hessian = nd.Hessian(eval_fun_norm)(current_optimal)
+    print('Numerical Hessian at {}, with value: {}'.format(current_optimal, res_Hessian))
 
     variance = np.linalg.inv(-res_Hessian)
     std_err = np.sqrt(np.diag(variance))
 
-    print('t value: {}'.format(np.array(current_near_optimal) / std_err))
+    print('t value: {}'.format(np.array(current_optimal) / std_err))

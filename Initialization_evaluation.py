@@ -10,13 +10,19 @@ matplotlib.rcParams['font.sans-serif'] = ['SimHei']  # 用黑体显示中文
 matplotlib.rcParams['axes.unicode_minus'] = False  # 正常显示负号
 
 # data = pd.read_excel(
-    # os.path.join(os.path.dirname(__file__), 'Evaluation result', 'Initialization evaluation result.xlsx'))
+# os.path.join(os.path.dirname(__file__), 'Evaluation result', 'Initialization evaluation result.xlsx'))
 # data = pd.read_excel(os.path.join(os.path.dirname(__file__), 'Evaluation result', 'Initialization_result_2019-10-21.xlsx'))
+# data = pd.read_excel(
+#     os.path.join(os.path.dirname(__file__), 'Evaluation result',
+#                  'Initialization result with new penalty function.xlsx'))
+
 data = pd.read_excel(
-    os.path.join(os.path.dirname(__file__), 'Evaluation result',
-                 'Initialization result with new penalty function.xlsx'))
+    os.path.join(os.path.dirname(__file__), 'Evaluation result', 'Jan. 12 random GA',
+                 'Initialization objective values ILS_PF_NewLD.xlsx'))
 
 pnt = data.loc[:, 'penalty']
+
+x_min, x_max = min(pnt), max(pnt)
 
 plt.hist(pnt, bins=15, facecolor="darkblue", edgecolor="black", alpha=0.7)
 # 显示横轴标签
@@ -56,20 +62,21 @@ sta_res_b2 = stat_b2.describe()
 sta_res_b3 = stat_b3.describe()
 
 # histogram
-stat_a1.hist(range=(20000, 32000), bins=15, grid=True, sharey=True, figsize=(15, 12))
+stat_a1.hist(range=(x_min, x_max), bins=15, grid=True, sharey=True, figsize=(15, 12))
+
 plt.title('a1')
 plt.show()
 
 # 补全a2~a5的
 
 # stat_a2.hist(range=(16000, 20000), bins=20, grid=True, sharey=True, figsize=(15, 12))
-stat_a2.hist(range=(20000, 32000), bins=15, grid=True, sharey=True, figsize=(15, 12))
+stat_a2.hist(range=(x_min, x_max), bins=15, grid=True, sharey=True, figsize=(15, 12))
 plt.show()
 
-stat_b2.hist(range=(20000, 32000), bins=15, grid=True, sharey=True, figsize=(15, 12))
+stat_b2.hist(range=(x_min, x_max), bins=15, grid=True, sharey=True, figsize=(15, 12))
 plt.show()
 
-stat_b3.hist(range=(20000, 32000), bins=15, grid=True, sharey=True, figsize=(15, 12))
+stat_b3.hist(range=(x_min, x_max), bins=15, grid=True, sharey=True, figsize=(15, 12))
 plt.show()
 
 #  做grid mesh，fix a1 to 1 and a2 to 0.03
