@@ -9,11 +9,10 @@ import Network
 import math
 from scipy.stats import gamma
 
-
 # behavioral parameters
-alpha = []  # 1 * 2 vector
-beta = []  # 1 * 3 vector
-phi = 0  # float, to transform monetary unit into time
+alpha = None  # single entry
+beta = {'intercept': None, 'shape': None, 'scale': None, 'time': None}  # 1 * 3 vector
+phi = None  # float, to transform monetary unit into time
 
 # instances of nodes and egdes contains solver methods. Thus they are in the same category with solver methods.
 Node_list = []
@@ -113,27 +112,27 @@ def agent_setup(**kwargs):
 
 
 def arc_util_callback(from_node, to_node):
-    global alpha, phi
-
-    _alpha_1, _alpha_2, _phi = alpha[0], alpha[1], phi
-
-    return _alpha_1 * Network.time_mat[from_node, to_node] + _alpha_2 * _phi * Network.cost_mat[from_node, to_node]
+    return alpha * Network.time_mat[from_node, to_node] + phi * Network.cost_mat[from_node, to_node]
 
 
 def node_util_callback(to_node, _accum_util):
+    # modified on Jan. 17
     global beta
 
-    [_beta1, _beta2, _beta3] = beta
+    _intercept, _shape, _scale = beta['intercept'], beta['shape'], beta['scale']  # scale < 1
     # always presume a negative discount factor
-    return _beta1 * np.dot(Agent.pref, Network.util_mat[to_node] * np.exp(min(-_beta2, 0) * _accum_util)) + _beta3 * \
-           Network.dwell_vec[to_node]
+    _visit_util = exp_util_callback(visit_node=to_node, cumu_util=_accum_util)
+    if 'time' in beta:
+        return _intercept * np.dot(Agent.pref, _visit_util) + beta['time'] * Network.dwell_vec[to_node]
+
+    return _intercept * np.dot(Agent.pref, _visit_util)
 
 
-def exp_util_callback(to_node, _accum_util):
+def exp_util_callback(visit_node, cumu_util):
     global beta
-    _beta_2 = beta[1]
-    # always presume a negative discount factor
-    return Network.util_mat[to_node] * np.exp(min(-_beta_2, 0) * _accum_util)
+    _intercept, _shape, _scale = beta['intercept'], beta['shape'], beta['scale']  # scale < 1
+
+    return Network.util_mat[visit_node] * (1 - gamma.cdf(cumu_util, a=_shape, scale=_scale))
 
 
 def eval_util(_route):  # use array as input
@@ -396,6 +395,50 @@ def path_penalty(path_obs, path_pdt):
     # TODO case when path length equal
 
 
+def geo_dist_penalty(p_a, p_b):  # created on Nov.3 2019
+    """Pa is observed path, Pb predicted"""
+
+    # Offset is 0 for the 1st destination.
+    distance_matrix = Network.dist_mat
+    if p_a[0] != p_b[0] or p_a[-1] != p_b[-1]:
+        raise ValueError('Paths have different o or d.')
+
+    # define the penalty in utility form for every two destinations. u_ik stands for the generalized cost of travel
+    o, d = p_a[0], p_a[-1]
+
+    path_a, path_b = p_a[1:-1], p_b[1:-1]  # excluding origin and destination
+
+    path_node_check = []
+    for _path in [path_a, path_b]:
+        _new_path = []
+        for node in _path:
+            if node <= min(distance_matrix.shape) - 1:
+                _new_path.append(node)
+        path_node_check.append(_new_path)
+    path_a, path_b = path_node_check[0], path_node_check[1]
+
+    # utility (negative) penalty evaluation
+    cost, a, b = 0, o, o  # let a, b be origin
+
+    # if exist empty path
+    if not path_a:  # if observed path is empty
+        return cost
+
+    while path_a and path_b:
+        a, b = path_a.pop(0), path_b.pop(0)  # a, b correspond to the i_th node in path_a, path_b
+        cost += distance_matrix[a][b]
+
+    if path_a:  # length of path_a > path b
+        while path_a:
+            a = path_a.pop(0)
+            cost += distance_matrix[a][b]
+    else:  # case when length of path_b > path a
+        while path_b:
+            b = path_b.pop(0)
+            cost += distance_matrix[a][b]
+    return cost
+
+
 # def path_penalty(p_a, p_b):
 #     distance_matrix = Network.dist_mat
 #     # path_a and path_b both starts from 0. offset starts from 0, i.e., 0 --> 1st destination
@@ -459,49 +502,6 @@ def path_penalty(path_obs, path_pdt):
 #     return dist[row][col]
 #
 #     # TODO case when path length equal
-
-def geo_dist_penalty(p_a, p_b):  # created on Nov.3 2019
-    """Pa is observed path, Pb predicted"""
-
-    # Offset is 0 for the 1st destination.
-    distance_matrix = Network.dist_mat
-    if p_a[0] != p_b[0] or p_a[-1] != p_b[-1]:
-        raise ValueError('Paths have different o or d.')
-
-    # define the penalty in utility form for every two destinations. u_ik stands for the generalized cost of travel
-    o, d = p_a[0], p_a[-1]
-
-    path_a, path_b = p_a[1:-1], p_b[1:-1]  # excluding origin and destination
-
-    path_node_check = []
-    for _path in [path_a, path_b]:
-        _new_path = []
-        for node in _path:
-            if node <= min(distance_matrix.shape) - 1:
-                _new_path.append(node)
-        path_node_check.append(_new_path)
-    path_a, path_b = path_node_check[0], path_node_check[1]
-
-    # utility (negative) penalty evaluation
-    cost, a, b = 0, o, o  # let a, b be origin
-
-    # if exist empty path
-    if not path_a:  # if observed path is empty
-        return cost
-
-    while path_a and path_b:
-        a, b = path_a.pop(0), path_b.pop(0)  # a, b correspond to the i_th node in path_a, path_b
-        cost += distance_matrix[a][b]
-
-    if path_a:  # length of path_a > path b
-        while path_a:
-            a = path_a.pop(0)
-            cost += distance_matrix[a][b]
-    else:  # case when length of path_b > path a
-        while path_b:
-            b = path_b.pop(0)
-            cost += distance_matrix[a][b]
-    return cost
 
 
 if __name__ == '__main__':

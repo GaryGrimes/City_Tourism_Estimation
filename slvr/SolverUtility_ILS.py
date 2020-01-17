@@ -27,12 +27,11 @@ class SolverUtility(object):
     @staticmethod
     def solver(q, process_idx, node_num, agent_database, **kwargs):  # Levenshtein distance, with path threshold filter
         # pass variables
-        alpha, beta, phi, util_matrix, time_matrix, \
-        cost_matrix, dwell_matrix, dist_matrix = kwargs['alpha'], kwargs['beta'], kwargs['phi'], kwargs[
-            'util_matrix'], kwargs['time_matrix'], kwargs['cost_matrix'], kwargs['dwell_matrix'], kwargs['dist_matrix']
+        util_matrix, time_matrix, cost_matrix, dwell_matrix, \
+        dist_matrix = kwargs['util_matrix'], kwargs['time_matrix'], \
+                      kwargs['cost_matrix'], kwargs['dwell_matrix'], kwargs['dist_matrix']
 
         # behavioral parameters data setup
-
         Solver_ILS.alpha = kwargs['alpha']
         Solver_ILS.beta = kwargs['beta']
         Solver_ILS.phi = kwargs['phi']
@@ -1964,7 +1963,7 @@ if __name__ == '__main__':
         if error_visit:
             cnt += 1
             print('Error visits: {} for agent with index {}'.format(error_visit, _idx))
-    print('Total {} error found'.format(cnt))
+    print('Total {} error found\n'.format(cnt))
     # %% setting up nodes
     node_num = sim_data.node_num  # Number of attractions. Origin and destination are excluded.
 
@@ -1982,10 +1981,16 @@ if __name__ == '__main__':
 
     # %% parameter setup
     phi = sim_data.phi
-    s_opt = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
+    # s_opt = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
+    # Parameter 20: a1: -0.800, a2: -0.026; b2: 10.012, b3: 0.007, with score: 2.189e-01
+    # 1/a2 = -38.46
+
+    alpha = -50
+    beta = {'intercept': 3000, 'shape': 7, 'scale': 0.5}
+
+    """previous beta1 = 100, * 38.46 ~ 3000; exp_x = shape * scale = 3.5"""
 
     # pass variables
-    alpha, beta = s_opt[:2], [100] + s_opt[2:]  # intercept at 5 too small? Set to 100
     util_matrix, time_matrix, cost_matrix, dwell_matrix, dist_matrix = \
         utility_matrix, edge_time_matrix, edge_cost_matrix, dwell_vector, edge_distance_matrix
 
@@ -2067,5 +2072,4 @@ if __name__ == '__main__':
 
     penalty_LD = Solver_ILS.path_penalty(path_a, path_b)
     penalty_SimGeo = Solver_ILS.geo_dist_penalty(path_a, path_b)
-    print('Penalty LD: {:.2f} m, Geo_dist: {} m'.format(penalty_LD, penalty_SimGeo))
-
+    print('Penalty modified LD: {:.2f} m, Geo_dist: {} m'.format(penalty_LD, penalty_SimGeo))
