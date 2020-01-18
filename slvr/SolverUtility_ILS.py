@@ -171,7 +171,8 @@ class SolverUtility(object):
 
                 path_pdt_score = []
                 for _path in path_pdt:
-                    path_pdt_score.append(Solver_ILS.eval_util(_path))  # a list of penalties
+                    # The memoizer must accept agent's preference as well.
+                    path_pdt_score.append(Solver_ILS.eval_util(_path, pref))  # a list of penalties
 
                 filter_ratio = 0.15  # predicted paths with penalties within 15% interval
                 max_score = max(path_pdt_score)  # max utility score for current path
@@ -376,7 +377,7 @@ class SolverUtility(object):
                 # evaluate scores for all path predicted (not penalty with the observed path here)
                 path_pdt_score = []
                 for _path in path_pdt:
-                    path_pdt_score.append(Solver_ILS.eval_util(_path))  # a list of penalties
+                    path_pdt_score.append(Solver_ILS.eval_util(_path, pref))  # a list of penalties
 
                 filter_ratio = 0.15  # predicted paths with penalties within 15% interval
                 max_score = max(path_pdt_score)  # max utility score for current path

@@ -157,8 +157,7 @@ def exp_util_callback(visit_node, cumu_util):
 
 
 @memoize
-def eval_util(_route):  # use array as input
-    _pref = Agent.pref
+def eval_util(_route, _pref):  # use array as input. The memoizer must accept agent's preference as well.
     res, _accum_util = 0, np.zeros([3])
     if len(_route) <= 2:
         return float("-inf")
@@ -282,7 +281,7 @@ def insert(order, best_score):
                 _feasibility = time_callback(path_temp) < t_max
                 # calculate utility and save best score and best position
                 if _feasibility:
-                    _utility = eval_util(path_temp)
+                    _utility = eval_util(path_temp, Agent.pref)
                     if _utility > best_score:  # update
                         best_score, best_node, best_pos = _utility, ii, jj
 
