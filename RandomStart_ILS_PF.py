@@ -122,12 +122,12 @@ if __name__ == '__main__':
         print('------ Evaluation start for iteration {} ------\n'.format(itr))
 
         try:
-            pg_curr = pg_total - len(Population)
+            pg_curr = pg_total - len(Population) + core_process
             progress.update(int(pg_curr / (pg_total - 1)) * 100)
         except:
             pass
 
-        s = Population[:core_process]
+        s = Population[:core_process]  # 因为无法pop掉多个
 
         jobs = []
         penalty_queue = mp.Queue()  # queue, to save results for multi_processing

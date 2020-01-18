@@ -1,4 +1,4 @@
-""" This script contains main method for multi-tasking module, the TTDP solver.
+""" This script contains main method for multi-tasking module, the TTDP solver using Iterated Local Search approach.
 Data Wrapping is executed in parent script to avoid repetitive I/Os.
 Added codes in main script to test and print route utilties. <- last update on Dec.25"""
 
@@ -122,7 +122,7 @@ class SolverUtility(object):
                     counter_2 += 1  # 2指inner loop的counter
                     v = len(order) - 1
 
-                    _u.append(best_score)  # TODO U is utility memo
+                    _u.append(best_score)  #  U is utility memoizer
                     _u8.append(v)
                     _U10.append(max(_u))
 
@@ -147,13 +147,7 @@ class SolverUtility(object):
 
                     order = Solver_ILS.shake(order, s, R)  # break sequence
 
-            # print('Near optimal path: {}, with total time {} min, utility {}.'.format(final_order,
-            #                                                                           Solver_ILS.time_callback(
-            #                                                                               final_order),
-            #                                                                           Solver_ILS.eval_util(
-            #                                                                               final_order)))
 
-            # Prediction penalty evaluation. Compare the predicted paths with observed one.
 
             path_obs = list(
                 np.array(_agent.path_obs) - 1)  # attraction indices in solver start from 0 (in survey start from 1)
@@ -172,6 +166,9 @@ class SolverUtility(object):
                 selected_path = list(path_pdt)
             else:
                 # evaluate scores for all path predicted (not penalty with the observed path here)
+                # select only 10 paths with high scores for filtering
+                path_pdt = path_pdt[-10:]
+
                 path_pdt_score = []
                 for _path in path_pdt:
                     path_pdt_score.append(Solver_ILS.eval_util(_path))  # a list of penalties
@@ -187,6 +184,7 @@ class SolverUtility(object):
                         selected_path.append(path_pdt[_])
                     else:
                         break
+
                 # at least 3 paths in the set
                 if len(selected_path) < 3:
                     selected_path = []

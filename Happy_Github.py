@@ -1,6 +1,7 @@
 ''' This script was just created for fun. To record happiness of learning and creating something new.'''
 from matplotlib import pyplot as plt
 import numpy as np
+from scipy.stats import gamma
 
 
 def generate_y(_x, offset, steepness=1):
@@ -27,7 +28,6 @@ y3 = generate_y(x, offset + 0.5, steepness=5)
 
 y0 = generate_y(x, 0.6, steepness=5)
 
-
 # setting the axes at the centre
 fig = plt.figure(dpi=200)
 ax = fig.add_subplot(1, 1, 1)
@@ -50,3 +50,17 @@ plt.legend()
 
 # show the plot
 plt.show()
+
+# compare the two evaluation utility functions' execution time
+util_vecotr = np.array([0.8, 0.75, 0.9])
+cumu_util = np.array([1.5, 1.3, 1.2])
+range_intercept = [10, 30, 100, 300, 1000, 3000, 10000]
+range_scale = [0.2, 0.3, 0.5, 0.8, 1.0]
+exp_x = 3.5
+
+for i in range(1000):
+    _scale = range_scale[np.random.randint(len(range_scale))]
+    res = (1 - gamma.cdf(cumu_util, a=exp_x / _scale, scale=_scale))
+
+for i in range(1000):
+    res = util_vecotr * np.exp(-0.5 * cumu_util)

@@ -1,5 +1,9 @@
-""" Module of the TTDP solver. Receive behavioral parameters and start up solver methods.
- Last modifed on Nov. 11 """
+"""
+Comments: Modules of the TTDP solver. Each instance of this script represents for a path prediction procedure for a given
+tourist under a set of behavioral parameters.
+Functionality: Receive behavioral parameters and start up solver methods.
+Last modified on Nov. 11. Last modified on Jan. 18.
+ """
 
 import numpy as np
 import pandas as pd
@@ -69,6 +73,22 @@ area_centers = {1: [135.8246, 35.095],
                 47: [135.7596385, 35.010865]}
 
 
+def memoize(func):
+    """
+    Enable Memoization with Decorators to save time for repetitive evaluation of identical routes.
+    For a same path its utility for a tourist with his preference under a given behavioral parameter will be the same.
+    """
+    mem = {}
+
+    def memoizer(*args, **kwargs):
+        key = str(args) + str(kwargs)
+        if key not in mem:
+            mem[key] = func(*args, **kwargs)
+        return mem[key]
+
+    return memoizer
+
+
 # -------- node setup -------- #
 
 def node_setup(**kwargs):
@@ -136,6 +156,7 @@ def exp_util_callback(visit_node, cumu_util):
     return Network.util_mat[visit_node] * (1 - gamma.cdf(cumu_util, a=_shape, scale=_scale))
 
 
+@memoize
 def eval_util(_route):  # use array as input
     _pref = Agent.pref
     res, _accum_util = 0, np.zeros([3])
