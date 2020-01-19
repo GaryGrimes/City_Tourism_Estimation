@@ -12,6 +12,8 @@ import Agent
 import Network
 import math
 from scipy.stats import gamma
+from scipy.optimize import curve_fit
+import warnings
 
 # behavioral parameters
 alpha = None  # single entry
@@ -72,25 +74,29 @@ area_centers = {1: [135.8246, 35.095],
                 46: [[135.7923442, 35.0581761], [135.6814425, 35.0164451]],
                 47: [135.7596385, 35.010865]}
 
+fit_params = []
 
-def memoize(func):
-    """
-    Enable Memoization with Decorators to save time for repetitive evaluation of identical routes.
-    For a same path its utility for a tourist with his preference under a given behavioral parameter will be the same.
-    """
-    mem = {}
 
-    def memoizer(*args, **kwargs):
-        key = str(args) + str(kwargs)
-        if key not in mem:
-            mem[key] = func(*args, **kwargs)
-        return mem[key]
+def logit(x, a, b, c):  # Logistic B equation from zunzun.com
+    return a / (1.0 + np.power(x / b, c))
 
-    return memoizer
+
+def fit_logit(func):
+    global fit_params
+    # generate x,y pairs to fit dramma distribution cdf
+    xmin, xmax = 0, 10
+    x = np.linspace(xmin, xmax, 500)
+    _intercept, _shape, _scale = beta['intercept'], beta['shape'], beta['scale']  # scale < 1
+
+    y = 1 - gamma.cdf(x, a=_shape, scale=_scale)
+    # logistic fit
+    initialParameters = np.array([1.0, 1.0, 1.0])
+    # curve fit the test data, ignoring warning due to initial parameter estimates
+    warnings.filterwarnings("ignore")
+    fit_params, pcov = curve_fit(func, x, y, initialParameters)
 
 
 # -------- node setup -------- #
-
 def node_setup(**kwargs):
     global Node_list
 
@@ -139,10 +145,9 @@ def arc_util_callback(from_node, to_node):
 def node_util_callback(to_node, _accum_util):
     # modified on Jan. 17
     global beta
-
     _intercept, _shape, _scale = beta['intercept'], beta['shape'], beta['scale']  # scale < 1
     # always presume a negative discount factor
-    _visit_util = exp_util_callback(visit_node=to_node, cumu_util=_accum_util)
+    _visit_util = exp_util_callback(to_node, _accum_util)
     if 'time' in beta:
         return _intercept * np.dot(Agent.pref, _visit_util) + beta['time'] * Network.dwell_vec[to_node]
 
@@ -150,14 +155,11 @@ def node_util_callback(to_node, _accum_util):
 
 
 def exp_util_callback(visit_node, cumu_util):
-    global beta
-    _intercept, _shape, _scale = beta['intercept'], beta['shape'], beta['scale']  # scale < 1
-
-    return Network.util_mat[visit_node] * (1 - gamma.cdf(cumu_util, a=_shape, scale=_scale))
+    """Now using fitted logistic curve to approximate the cdf of gamma distribution."""
+    return Network.util_mat[visit_node] * logit(cumu_util, *fit_params)
 
 
-@memoize
-def eval_util(_route, _pref):  # use array as input. The memoizer must accept agent's preference as well.
+def eval_util(_route):  # use array as input. The memoizer must accept agent's preference as well.
     res, _accum_util = 0, np.zeros([3])
     if len(_route) <= 2:
         return float("-inf")
@@ -281,7 +283,7 @@ def insert(order, best_score):
                 _feasibility = time_callback(path_temp) < t_max
                 # calculate utility and save best score and best position
                 if _feasibility:
-                    _utility = eval_util(path_temp, Agent.pref)
+                    _utility = eval_util(path_temp)
                     if _utility > best_score:  # update
                         best_score, best_node, best_pos = _utility, ii, jj
 

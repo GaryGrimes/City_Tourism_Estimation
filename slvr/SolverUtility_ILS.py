@@ -39,28 +39,27 @@ class SolverUtility(object):
         # save results for all agents
         _penalty, _pdt_path, _obs_path = [], [], []
 
-        # enumerate each tourist
         # node setup
-
         node_properties = {'node_num': node_num,
                            'utility_matrix': util_matrix,
                            'dwell_vector': dwell_matrix}
 
         # edge setup
-
         edge_properties = {'edge_time_matrix': time_matrix,
                            'edge_cost_matrix': cost_matrix,
                            'edge_distance_matrix': dist_matrix}
-
         Solver_ILS.edge_setup(**edge_properties)
+
+        # gamma distribution and logit fit
+        Solver_ILS.fit_logit(Solver_ILS.logit)
 
         iteration_size = len(agent_database)
 
         for _idd, _agent in enumerate(agent_database):
             if _idd > 0 and _idd % 500 == 0:
-                print(
-                    '--- Running optimal tours for the {} agent in {} for process {}'.format(
-                        _idd, len(agent_database), mp.current_process().name))
+                str_time = datetime.datetime.now().strftime('%H:%M')
+                print('{} --- Running optimal tours for the {} agent '
+                      'in {} for process {}'.format(str_time, _idd, len(agent_database), mp.current_process().name))
 
             pref = _agent.preference
             observed_path = _agent.path_obs
@@ -122,7 +121,7 @@ class SolverUtility(object):
                     counter_2 += 1  # 2指inner loop的counter
                     v = len(order) - 1
 
-                    _u.append(best_score)  #  U is utility memoizer
+                    _u.append(best_score)  # U is utility memoizer
                     _u8.append(v)
                     _U10.append(max(_u))
 
@@ -147,8 +146,6 @@ class SolverUtility(object):
 
                     order = Solver_ILS.shake(order, s, R)  # break sequence
 
-
-
             path_obs = list(
                 np.array(_agent.path_obs) - 1)  # attraction indices in solver start from 0 (in survey start from 1)
 
@@ -172,7 +169,7 @@ class SolverUtility(object):
                 path_pdt_score = []
                 for _path in path_pdt:
                     # The memoizer must accept agent's preference as well.
-                    path_pdt_score.append(Solver_ILS.eval_util(_path, pref))  # a list of penalties
+                    path_pdt_score.append(Solver_ILS.eval_util(_path))  # a list of penalties
 
                 filter_ratio = 0.15  # predicted paths with penalties within 15% interval
                 max_score = max(path_pdt_score)  # max utility score for current path
@@ -377,7 +374,7 @@ class SolverUtility(object):
                 # evaluate scores for all path predicted (not penalty with the observed path here)
                 path_pdt_score = []
                 for _path in path_pdt:
-                    path_pdt_score.append(Solver_ILS.eval_util(_path, pref))  # a list of penalties
+                    path_pdt_score.append(Solver_ILS.eval_util(_path))  # a list of penalties
 
                 filter_ratio = 0.15  # predicted paths with penalties within 15% interval
                 max_score = max(path_pdt_score)  # max utility score for current path
@@ -1998,6 +1995,9 @@ if __name__ == '__main__':
     Solver_ILS.alpha = alpha
     Solver_ILS.beta = beta
     Solver_ILS.phi = phi
+
+    # gamma distribution and logit fit
+    Solver_ILS.fit_logit(Solver_ILS.logit)
 
     # save results for all agents
     _penalty, _pdt_path, _obs_path = [], [], []

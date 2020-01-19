@@ -64,3 +64,4 @@ for i in range(1000):
 
 for i in range(1000):
     res = util_vecotr * np.exp(-0.5 * cumu_util)
+
