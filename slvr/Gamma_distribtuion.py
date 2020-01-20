@@ -40,13 +40,16 @@ fig, axes = plt.subplots(3, 1, dpi=150, figsize=(8, 18))
 xmin, xmax = 0, 5
 x = np.linspace(xmin, xmax, 500)
 
-exp_x = 3.5  # tourists perceive fatigue after visiting 3 to 4 sites. But the first several visits will not decrease so much
-scale = np.array([0.1, 0.2, 0.3, 0.5, 0.7, 1.])
-k, theta = exp_x / scale, scale
+# exp_x = 3.5  # tourists perceive fatigue after visiting 3 to 4 sites. But the first several visits will not decrease so much
+exp_x = [1, 2, 2.5, 3, 4, 6, 8]
+shape = 7
+# scale = np.array([0.1, 0.2, 0.3, 0.5, 0.7, 1.])
 
-for i in zip(k, theta):
+k, theta =  shape, [_ / shape for _ in exp_x]
+
+for i in theta:
     # gamma distribution
-    y = 1 - gamma.cdf(x, a=i[0], scale=i[1])
+    y = 1 - gamma.cdf(x, a=k, scale=i)
     # polynomial fit
     func_fit = np.polyfit(x, y, 15)
     p1 = np.poly1d(func_fit)
@@ -59,9 +62,9 @@ for i in zip(k, theta):
     fittedParameters, pcov = curve_fit(func, x, y, initialParameters)
     y_fit_logit = func(x, *fittedParameters)
 
-    axes[0].plot(x, y, label=(r'$\alpha={}, \beta={}$'.format(i[0], 1 / i[1])))
-    axes[1].plot(x, y_fit, label=(r'$\alpha={}, \beta={}$'.format(i[0], 1 / i[1])))
-    axes[2].plot(x, y_fit_logit, label=(r'$\alpha={}, \beta={}$'.format(i[0], 1 / i[1])))
+    axes[0].plot(x, y, label=(r'$\alpha={}, \beta={}$'.format(k, 1 / i)))
+    axes[1].plot(x, y_fit, label=(r'$\alpha={}, \beta={}$'.format(k, 1 / i)))
+    axes[2].plot(x, y_fit_logit, label=(r'$\alpha={}, \beta={}$'.format(k, 1 / i)))
 
 for _ax in axes:
     _ax.set_xlim([xmin, xmax])
@@ -83,13 +86,13 @@ node_util = np.array([0.3, 0.5, 0.7])
 alpha = -50
 beta = {'intercept': 3000, 'shape': 7, 'scale': 0.5}
 
-test_func_0 = np.dot(pref, node_util * np.exp(-2 * util_array))
-
-test_func_gamma = np.dot(pref, node_util * (1 - gamma.cdf(util_array, a=i[0], scale=i[1])))
-
-test_func_ploy = np.dot(pref, node_util * p1(util_array))
-
-test_func_logit = np.dot(pref, node_util * func(util_array, *fittedParameters))
+# test_func_0 = np.dot(pref, node_util * np.exp(-2 * util_array))
+#
+# test_func_gamma = np.dot(pref, node_util * (1 - gamma.cdf(util_array, a=i[0], scale=i[1])))
+#
+# test_func_ploy = np.dot(pref, node_util * p1(util_array))
+#
+# test_func_logit = np.dot(pref, node_util * func(util_array, *fittedParameters))
 
 # %% Reference: approximate the gamma cdf with a polynomial function using np.polyfit
 # #

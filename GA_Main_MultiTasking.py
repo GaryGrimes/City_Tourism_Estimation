@@ -87,8 +87,10 @@ def evaluation(_s, _itr):
             print('\nThe {}th parameter is sent from history (with index {}), with score: {}'.format(
                 idx, memo_parameter.index(parameter), memo_penalty[memo_parameter.index(parameter)]))
         else:
-            ALPHA = list(parameter[:2])
-            BETA = [100] + list(parameter[2:])
+            # with gamma utility function
+            ALPHA = parameter[0]
+            BETA = {'intercept': parameter[1], 'shape': parameter[2], 'scale': parameter[3]}
+
             data_input = {'alpha': ALPHA, 'beta': BETA,
                           'phi': phi,
                           'util_matrix': utility_matrix,
@@ -141,7 +143,7 @@ def evaluation(_s, _itr):
     # print evaluation scores
     print('Evaluation scores for iteration {}:'.format(_itr))
     for _i, _ in enumerate(scores):
-        print('Parameter %d: a1: %.3f, a2: %.3f; b2: %.3f, b3: %.3f, with score: %.3e'
+        print('Parameter %d: a1: %.3f, b1: %.3f; k: %.3f, theta: %.3f, with score: %.3e'
               % (_i + 1, _s[_i][0], _s[_i][1], _s[_i][2], _s[_i][3], _))
     return scores
 
@@ -223,11 +225,11 @@ def mutation(prob, best_score, population, population_scores):
     return species
 
 
-def mutation_new(prob, best_score, population, population_scores, bounds=(10, 1, 10, 3)):
+def mutation_new(prob, best_score, population, population_scores, boundaries=(10, 1, 10, 3)):
     """ The mutation process after selection. An insersion of elite individuals will be performed as
     an elite preservation strategy.Last modified on Jan. 13, 2020."""
 
-    if len(bounds) != len(population[0]):
+    if len(boundaries) != len(population[0]):
         raise ValueError('Bounds should have same number of entries as individuals.')
     # insert elite individuals
     insertion_size = int(len(population) / 3)
@@ -249,7 +251,7 @@ def mutation_new(prob, best_score, population, population_scores, bounds=(10, 1,
             _error = abs((_score - best_score) / best_score)
 
             for _idx, _value in enumerate(_i):
-                bound = bounds[_idx]
+                bound = boundaries[_idx]
                 _new_individual.append(value_mutation(_value, _error, bound))
             species.append(_new_individual)
         else:
@@ -309,7 +311,7 @@ if __name__ == '__main__':
     inn = 20  # species size (each individual in current generation is a vector of behavioral parameters
 
     # itr_max = 200
-    itr_max = 300
+    itr_max = 200
     prob_mut = 1  # parameter mutation probability (always mutate to go random search)
 
     memo_parameter, memo_penalty = [], []  # memo stores parameters from last 2 iterations
@@ -322,18 +324,18 @@ if __name__ == '__main__':
     # parameter = [-0.05, -0.05, 0.03, 0.1]
     # s = [[]]  # todo initialize s with good results in initialization evaluation
 
-    initial_eval_filename = 'Initialization objective values ILS_PF_NewLD.xlsx'  # generated on Jan. 10
+    initial_eval_filename = 'Initialization objective values ILS_Gamma.xlsx'  # generated on Jan. 10
 
     initial_eval_res = pd.read_excel(
         os.path.join(os.path.dirname(__file__), 'Evaluation result',
-                     'Jan 12 random GA', initial_eval_filename), index_col=0)
+                     'Jan 20 grid search', initial_eval_filename), index_col=0)
 
     # sort values by penalty
     temp_df = initial_eval_res.sort_values(by=['penalty'])
     s = temp_df.loc[:, 'a1':'b3'].values[:(inn)]
 
-    # alpha1 and alpha2 should have negative values!
-    s[:, :2] = -s[:, :2]
+    # define mutation bounds for the parameters
+    bounds = np.array([max(abs(s[:, _])) for _ in range(s.shape[1])])
     s = s.tolist()
 
     # start iterations
@@ -349,15 +351,6 @@ if __name__ == '__main__':
         # Scores of selected individuals
         SCORES = list(SCORES[_] for _ in Indices)  # s and SCORES should have same dimension
 
-        print('Iteration {}: SCORES:\n'.format(iteration + 1))
-        for i, _ in enumerate(Indices):
-            print(
-                'Parameter %d: a1: %.3f, a2: %.3f; b2: %.3f, b3: %.3f, with score: %.3e' % (i + 1, s[i][0],
-                                                                                            s[i][1],
-                                                                                            s[i][2],
-                                                                                            s[i][3],
-                                                                                            SCORES[i]))
-
         Best_score = max(SCORES)
 
         para_record = max(Best_score, para_record)  # duplicate 'record' use in the optimal solver module
@@ -369,16 +362,16 @@ if __name__ == '__main__':
         x_max.append(s[np.argsort(SCORES)[-1]])  # pick the last one with highest score. x_max
 
         # mutation to produce next generation
-        s = mutation_new(prob_mut, para_record, s, SCORES)  # mutation generates (inn + insertion size) individuals
+        s = mutation_new(prob_mut, para_record, s, SCORES,
+                         boundaries=bounds)  # mutation generates (inn + insertion size) individuals
 
         print('\nMutated parameters(individuals) for iteration {}: '.format(iteration + 1))
         for i in range(len(s)):
-            print(
-                'Parameter %d: a1: %.3f, a2: %.3f; b2: %.3f, b3: %.3f\n' % (i + 1, s[i][0],
-                                                                            s[i][1],
-                                                                            s[i][2],
-                                                                            s[i][3],
-                                                                            ))
+            print('Parameter %d: a1: %.3f, b1: %.3f; k: %.3f, theta: %.3f\n' % (i + 1, s[i][0],
+                                                                                s[i][1],
+                                                                                s[i][2],
+                                                                                s[i][3],
+                                                                                ))
         # %% plot
         if iteration > 20:
             try:
