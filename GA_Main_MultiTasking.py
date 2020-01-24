@@ -129,12 +129,13 @@ def evaluation(_s, _itr):
                 para_penalties.append(_tuple[1])  # Caution! 目前传回的tuple[1]是一个dict!!!
                 break
 
-    try:
-        memo_parameter.extend(_s.tolist())
-    except AttributeError:
-        memo_parameter.extend(_s)
-
-    memo_penalty.extend(para_penalties)
+    # disable parameter memoizer
+    # try:
+    #     memo_parameter.extend(_s.tolist())
+    # except AttributeError:
+    #     memo_parameter.extend(_s)
+    #
+    # memo_penalty.extend(para_penalties)
 
     PARAMETER[_itr] = _s  # save parameters of each iteration into the PARAMETER dict.
 
@@ -186,7 +187,6 @@ def selection(s_size, _scores):
 #     indices.extend(insertion_size * [best_one_idx])
 #     return indices
 
-# todo: mutation process is to be modified.
 def mutation(prob, best_score, population, population_scores):
     insertion_size = round(len(population) / 3)
     learn_rate = [0.01, 0.01, 0.01, 0.02]
@@ -308,7 +308,7 @@ if __name__ == '__main__':
 
     # parameter setup
     # inn=16
-    inn = 20  # species size (each individual in current generation is a vector of behavioral parameters
+    inn = 16  # species size (each individual in current generation is a vector of behavioral parameters
 
     # itr_max = 200
     itr_max = 200

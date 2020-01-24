@@ -89,12 +89,13 @@ class SolverUtility(object):
             path_pdt = []
 
             # %% strat up solver
-            no_init_flag = 0
             # solver initialization
             initial_path = Solver_ILS.initial_solution()
 
-            if len(initial_path) <= 2:
-                no_init_flag = 1
+            if len(initial_path) < 2:  # time budget too small
+                path_pdt.append(Solver_ILS.comp_fill())
+            elif len(initial_path) == 2:  # negative total utility for any visit
+                path_pdt.append(initial_path)
             else:
                 first_visit = initial_path[1]
                 Solver_ILS.Node_list[first_visit].visit = 1
@@ -148,14 +149,6 @@ class SolverUtility(object):
 
             path_obs = list(
                 np.array(_agent.path_obs) - 1)  # attraction indices in solver start from 0 (in survey start from 1)
-
-            # last modified on Oct. 24 16:29 2019
-            # last modified on Dec. 20
-
-            if no_init_flag:
-                # do compulsory fill
-                path_pdt.append(Solver_ILS.comp_fill())
-                pass
 
             """对比的是combinatorial path score"""
             selected_path = []
@@ -1030,38 +1023,33 @@ class SolverUtility(object):
 
     @staticmethod  # levenshtein distance with path threshold filter
     def solver_single(node_num, agent, **kwargs):  # levestain distance, with path threshold filter
-        '''the solver function is for single agent'''
+        """the solver function is for single agent"""
 
-        # pass variables
-        alpha, beta, phi, util_matrix, time_matrix, cost_matrix, dwell_matrix, dist_matrix = kwargs['alpha'], \
-                                                                                             kwargs['beta'], kwargs[
-                                                                                                 'phi'], kwargs[
-                                                                                                 'util_matrix'], kwargs[
-                                                                                                 'time_matrix'], kwargs[
-                                                                                                 'cost_matrix'], kwargs[
-                                                                                                 'dwell_matrix'], \
-                                                                                             kwargs[
-                                                                                                 'dist_matrix']
+        util_matrix, time_matrix, cost_matrix, dwell_matrix, \
+        dist_matrix = kwargs['util_matrix'], kwargs['time_matrix'], \
+                      kwargs['cost_matrix'], kwargs['dwell_matrix'], kwargs['dist_matrix']
 
         # behavioral parameters data setup
-
         Solver_ILS.alpha = kwargs['alpha']
         Solver_ILS.beta = kwargs['beta']
         Solver_ILS.phi = kwargs['phi']
 
-        # node setup
+        # save results for all agents
+        _penalty, _pdt_path, _obs_path = [], [], []
 
+        # node setup
         node_properties = {'node_num': node_num,
                            'utility_matrix': util_matrix,
                            'dwell_vector': dwell_matrix}
 
         # edge setup
-
         edge_properties = {'edge_time_matrix': time_matrix,
                            'edge_cost_matrix': cost_matrix,
                            'edge_distance_matrix': dist_matrix}
-
         Solver_ILS.edge_setup(**edge_properties)
+
+        # gamma distribution and logit fit
+        Solver_ILS.fit_logit(Solver_ILS.logit)
 
         pref = agent.preference
         observed_path = agent.path_obs
@@ -1207,20 +1195,13 @@ class SolverUtility(object):
         return lowest_penalty  # unit in m
 
     @staticmethod
-    def solver_debug(process_idx, node_num, agent_database, **kwargs):  #
+    def solver_debug(node_num, agent_database, **kwargs):  #
         # pass variables
-        alpha, beta, phi, util_matrix, time_matrix, cost_matrix, dwell_matrix, dist_matrix = kwargs['alpha'], \
-                                                                                             kwargs['beta'], kwargs[
-                                                                                                 'phi'], kwargs[
-                                                                                                 'util_matrix'], kwargs[
-                                                                                                 'time_matrix'], kwargs[
-                                                                                                 'cost_matrix'], kwargs[
-                                                                                                 'dwell_matrix'], \
-                                                                                             kwargs[
-                                                                                                 'dist_matrix']
+        util_matrix, time_matrix, cost_matrix, dwell_matrix, \
+        dist_matrix = kwargs['util_matrix'], kwargs['time_matrix'], \
+                      kwargs['cost_matrix'], kwargs['dwell_matrix'], kwargs['dist_matrix']
 
         # behavioral parameters data setup
-
         Solver_ILS.alpha = kwargs['alpha']
         Solver_ILS.beta = kwargs['beta']
         Solver_ILS.phi = kwargs['phi']
@@ -1243,7 +1224,8 @@ class SolverUtility(object):
 
         Solver_ILS.edge_setup(**edge_properties)
 
-        iteration_size = len(agent_database)
+        # gamma distribution and logit fit
+        Solver_ILS.fit_logit(Solver_ILS.logit)
 
         # enumerate all tourists
         success_usr_cnt = 0
@@ -1257,9 +1239,7 @@ class SolverUtility(object):
 
         for _idd, _agent in enumerate(agent_database):
             if _idd > 0 and _idd % 500 == 0:
-                print(
-                    '--- Running optimal tours for the {} agent in {} for process {}'.format(
-                        _idd, len(agent_database), mp.current_process().name))
+                print('--- Running optimal tours for the {} agent in {} '.format(_idd, len(agent_database)))
 
             pref = _agent.preference
             observed_path = _agent.path_obs
@@ -1297,18 +1277,13 @@ class SolverUtility(object):
             path_pdt = []
 
             # %% strat up solver
-            no_init_flag = 0
             # solver initialization
             initial_path = Solver_ILS.initial_solution()
 
-            # skip agents with empty initialized path
-            if not initial_path:
-                err_init.append(_idd)
-                # initial_skip += 1
-                # continue
-
-            if len(initial_path) <= 2:
-                no_init_flag = 1
+            if len(initial_path) < 2:  # time budget too small
+                path_pdt.append(Solver_ILS.comp_fill())
+            elif len(initial_path) == 2:  # negative total utility for any visit
+                path_pdt.append(initial_path)
             else:
                 first_visit = initial_path[1]
                 Solver_ILS.Node_list[first_visit].visit = 1
@@ -1335,7 +1310,7 @@ class SolverUtility(object):
                     counter_2 += 1  # 2指inner loop的counter
                     v = len(order) - 1
 
-                    _u.append(best_score)  # TODO U is utility memo
+                    _u.append(best_score)  # U is utility memoizer
                     _u8.append(v)
                     _U10.append(max(_u))
 
@@ -1358,26 +1333,10 @@ class SolverUtility(object):
                     if s >= min(_u8):
                         s = s - min(_u8) + 1
 
-                    order = Solver_ILS.shake(order, s, R)
-
-            # print('Near optimal path: {}, with total time {} min, utility {}.'.format(final_order,
-            #                                                                           Solver_ILS.time_callback(
-            #                                                                               final_order),
-            #                                                                           Solver_ILS.eval_util(
-            #                                                                               final_order)))
-
-            # Prediction penalty evaluation. Compare the predicted paths with observed one.
+                    order = Solver_ILS.shake(order, s, R)  # break sequence
 
             path_obs = list(
                 np.array(_agent.path_obs) - 1)  # attraction indices in solver start from 0 (in survey start from 1)
-
-            # last modified on Oct. 24 16:29 2019
-            # last modified on Dec. 20
-
-            if no_init_flag:
-                # do compulsory fill
-                path_pdt.append(Solver_ILS.comp_fill())
-                pass
 
             """对比的是combinatorial path score"""
             selected_path = []
@@ -1429,6 +1388,18 @@ class SolverUtility(object):
             _pdt_path.append(best_path_predicted)
             _obs_path.append(path_obs)
 
+            # debug print
+            print_util_obs, print_util_pdt = Solver_ILS.eval_util(path_obs), Solver_ILS.eval_util(best_path_predicted)
+            print('Agent # {} -- Prediction error {:.1f}, path obs {} of util {:.1f}, pdt {} of util {:.1f}'.format(
+                _idd, lowest_penalty, np.array(path_obs) + 1, print_util_obs, np.array(best_path_predicted) + 1,
+                print_util_pdt
+            ))
+
+            if lowest_penalty > 10 ** 7:
+                print('-- Prediction error for person {}: {}, path obs {}, pdt {}'.format(
+                    _idd, lowest_penalty, np.array(path_obs) + 1, np.array(best_path_predicted) + 1
+                ))
+
             end_time = datetime.datetime.now()
             success_usr_cnt += 1
             success_set.add(_idd)
@@ -1436,10 +1407,6 @@ class SolverUtility(object):
             if t_passed > 60:
                 print('------ Evaluation time: {}s for agent id {}------\n'.format(t_passed, _idd))
             # update progress bar
-
-        # todo 加上现在的lowest_penalty，可以先对penalty进行argsort然后取index
-        # TODO create a dict? tuple (idx, data) . data includes penalty,
-        #  [top 10 pdt_paths, least 10 pdt_paths], [top 10 obs_paths, least 10 obs_paths]
 
         sorted_indices = np.argsort(_penalty)  # according to mismatch penalty, for all tourists, from min to max
         predicted = [_pdt_path[_] for _ in sorted_indices[:10]] + [_pdt_path[_] for _ in sorted_indices[-10:]]
@@ -1452,8 +1419,7 @@ class SolverUtility(object):
             success_usr_cnt,
             len(agent_database) - success_usr_cnt, initial_skip))
 
-        res_dict = {'process': process_idx,
-                    'penalty': sum(_penalty) / 1000,
+        res_dict = {'penalty': sum(_penalty) / 1000,
                     'initial skip': initial_skip,
                     'error_emty_info': err_emty_info,
                     'error_init': err_init,
@@ -1981,8 +1947,17 @@ if __name__ == '__main__':
     # Parameter 20: a1: -0.800, a2: -0.026; b2: 10.012, b3: 0.007, with score: 2.189e-01
     # 1/a2 = -38.46
 
-    alpha = -50
-    beta = {'intercept': 3000, 'shape': 7, 'scale': 0.5}
+    # alpha = -5.392
+    # beta = {'intercept': 8.819, 'shape': 3.855, 'scale': 0.989}
+
+    alpha = -3
+    beta = {'intercept': 100, 'shape': 0.1, 'scale': 0.6}
+
+    pref = [0.5, 0.3, 0.2]  # just for test
+    observed_path = [29, 27, 24, 25, 29]  # index starts from 1
+    # observed_path = [29, 29, 29]  # index starts from 1
+
+    t_max, origin, destination = 340, observed_path[0] - 1, observed_path[-1] - 1
 
     """previous beta1 = 100, * 38.46 ~ 3000; exp_x = shape * scale = 3.5"""
 
@@ -2016,10 +1991,6 @@ if __name__ == '__main__':
                        'edge_distance_matrix': dist_matrix}
 
     Solver_ILS.edge_setup(**edge_properties)
-
-    pref = [0.5, 0.3, 0.3]  # just for test
-    observed_path = [29, 27, 24, 25, 29]  # index starts from 1
-    t_max, origin, destination = 340, observed_path[0] - 1, observed_path[-1] - 1
 
     visit_history = {}
 
@@ -2072,3 +2043,15 @@ if __name__ == '__main__':
     penalty_LD = Solver_ILS.path_penalty(path_a, path_b)
     penalty_SimGeo = Solver_ILS.geo_dist_penalty(path_a, path_b)
     print('Penalty modified LD: {:.2f} m, Geo_dist: {} m'.format(penalty_LD, penalty_SimGeo))
+
+    # %% Jan.21 solver debug
+    if input('\nStart tour prediction under current parameters?'):
+        data_input = {'alpha': alpha, 'beta': beta,
+                      'phi': phi,
+                      'util_matrix': utility_matrix,
+                      'time_matrix': edge_time_matrix,
+                      'cost_matrix': edge_cost_matrix,
+                      'dwell_matrix': dwell_vector,
+                      'dist_matrix': edge_distance_matrix}
+
+        res_debug = SolverUtility.solver_debug(node_num, agent_database, **data_input)

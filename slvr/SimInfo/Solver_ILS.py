@@ -76,6 +76,8 @@ area_centers = {1: [135.8246, 35.095],
 
 fit_params = []
 
+insertion_penalty = 3  # 3 times larger than substitution
+
 
 def logit(x, a, b, c):  # Logistic B equation from zunzun.com
     return a / (1.0 + np.power(x / b, c))
@@ -84,16 +86,20 @@ def logit(x, a, b, c):  # Logistic B equation from zunzun.com
 def fit_logit(func):
     global fit_params
     # generate x,y pairs to fit dramma distribution cdf
-    xmin, xmax = 0, 10
-    x = np.linspace(xmin, xmax, 500)
+
     _intercept, _shape, _scale = beta['intercept'], beta['shape'], beta['scale']  # scale < 1
+    xmin, xmax = 0, max(10, _shape * _scale * 2)  # double of the expected x
+    x = np.linspace(xmin, xmax, 25 * int(abs(xmax - xmin)))
 
     y = 1 - gamma.cdf(x, a=_shape, scale=_scale)
     # logistic fit
     initialParameters = np.array([1.0, 1.0, 1.0])
     # curve fit the test data, ignoring warning due to initial parameter estimates
     warnings.filterwarnings("ignore")
-    fit_params, pcov = curve_fit(func, x, y, initialParameters)
+    try:
+        fit_params, pcov = curve_fit(func, x, y, initialParameters)
+    except RuntimeError:
+        raise RuntimeError('Runtime error at shape {} and scale {}'.format(_shape, _scale))
 
 
 # -------- node setup -------- #
@@ -137,9 +143,12 @@ def agent_setup(**kwargs):
     Agent.visited = kwargs['visited']
 
 
+# -------- model formulation (utility) setup -------- #
+
 def arc_util_callback(from_node, to_node):
+    # u(travel) = - t_ij - alpha_1 * c_ij. alpha_1 should be positive.
     # arc utility must at least be zero
-    return min(alpha * Network.time_mat[from_node, to_node], 0) + min(-phi * Network.cost_mat[from_node, to_node], 0)
+    return -Network.time_mat[from_node, to_node] - max(alpha * Network.cost_mat[from_node, to_node], 0)
 
 
 def node_util_callback(to_node, _accum_util):
@@ -148,9 +157,9 @@ def node_util_callback(to_node, _accum_util):
     _intercept, _shape, _scale = beta['intercept'], beta['shape'], beta['scale']  # scale < 1
     # always presume a negative discount factor
     _visit_util = exp_util_callback(to_node, _accum_util)
+
     if 'time' in beta:
         return _intercept * np.dot(Agent.pref, _visit_util) + beta['time'] * Network.dwell_vec[to_node]
-
     return _intercept * np.dot(Agent.pref, _visit_util)
 
 
@@ -201,7 +210,7 @@ def eval_util_print(_route):  # use array as input
 
         edge_cost = arc_util_callback(_route[_k], _route[_k + 1])
         res += edge_cost
-        print('{}: Final travel {} costs {:.2f}'.format(_k + 1, (_route[_k - 1], _route[_k]), edge_cost))
+        print('{}: Final travel {} costs {:.2f}'.format(_k + 1, (_route[_k], _route[_k + 1]), edge_cost))
         print('Final score: {:.2f}'.format(res))
     pass
 
@@ -233,31 +242,51 @@ def util_change(n1, n2, n3, n4):  # utility improvement if result is positive
 
 def initial_solution():
     o, d, t_max = Agent.Origin, Agent.Destination, Agent.t_max
+
     distance, benefit = [], []
     for _i in range(Network.node_num):
-        cost = Network.time_mat[o, _i] + Network.time_mat[_i, d] + Network.dwell_vec[_i]
+        # cost = Network.time_mat[o, _i] + Network.time_mat[_i, d]  # + Network.dwell_vec[_i]
+        """updated on Jan. 21"""
+        cost = abs(arc_util_callback(o, _i) + arc_util_callback(_i, d))  # cost have positive value
         distance.append(cost)
+
         _benefit = np.dot(Agent.pref, Network.util_mat[_i]) / cost
         benefit.append(_benefit)
+
     # index is sorted such that the first entry has smallest benefit for insertion (from o to d)
     index = list(np.argsort(benefit))
     # except for node_j
 
     # check time limitation
-    available_nodes = [_x for _x in index if distance[_x] <= t_max][::-1]  # nodes with higher benefits at front
+    # nodes with higher benefits at front
+    available_nodes = [_x for _x in index if time_callback([o, _x, d]) <= t_max][::-1]
+
+    # if over time limit
     if not available_nodes:
         return []
-    # randomly pick an available node for insertion
-    _ = [o, available_nodes[np.random.randint(len(available_nodes))], d]
-    return _
+
+    # Otherwise, randomly pick an available node for insertion
+    initial_path, success = [], 1
+    comp_travel_util = arc_util_callback(o, d)  # a compulsive cost for traveling from o to d
+    while not initial_path or eval_util(initial_path) < comp_travel_util:  # no better choice than going directly to d
+        if available_nodes:
+            node_to_insert = available_nodes.pop(np.random.randint(len(available_nodes)))
+            initial_path = [o, node_to_insert, d]
+        else:
+            success = 0
+            break
+
+    return initial_path if success else [o, d]
 
 
 def comp_fill():
     o, d, t_max = Agent.Origin, Agent.Destination, Agent.t_max
     distance, benefit = [], []
     for _i in range(Network.node_num):
-        cost = Network.time_mat[o, _i] + Network.time_mat[_i, d] + Network.dwell_vec[_i]
+        # cost = Network.time_mat[o, _i] + Network.time_mat[_i, d] + Network.dwell_vec[_i]
+        cost = abs(arc_util_callback(o, _i) + arc_util_callback(_i, d))
         distance.append(cost)
+
         _benefit = np.dot(Agent.pref, Network.util_mat[_i]) / cost
         benefit.append(_benefit)
     # index is sorted such that the first entry has smallest benefit for insertion (from o to d)
@@ -280,7 +309,7 @@ def insert(order, best_score):
             for jj in range(1, len(order)):
                 path_temp = order[:jj] + [ii] + order[jj:]  # node index is ii
                 # check time budget feasibility
-                _feasibility = time_callback(path_temp) < t_max
+                _feasibility = time_callback(path_temp) <= t_max
                 # calculate utility and save best score and best position
                 if _feasibility:
                     _utility = eval_util(path_temp)
@@ -348,6 +377,8 @@ def find_path_center(_path):
     return _final_center
 
 
+# -------- here defines and adjusts prediction error criteria -------- #
+
 def path_penalty(path_obs, path_pdt):
     """Calculates the difference between observed and predicted path in meters.
     Insertion cost is defined as the haversine distance between inserted nodes and the center of observed path."""
@@ -367,7 +398,7 @@ def path_penalty(path_obs, path_pdt):
     # compare the distance between the center of observed path and the inserted node as the insertion cost
     center_obs = find_path_center(path_obs)
 
-    insertion_cost = [haver_dist(*center_obs, *area_centers[_ + 1]) for _ in range(len(Node_list))]
+    insertion_cost = insertion_penalty * [haver_dist(*center_obs, *area_centers[_ + 1]) for _ in range(len(Node_list))]
 
     # check empty path
     path_a, path_b = path_obs[1:-1], path_pdt[1:-1]
@@ -532,3 +563,19 @@ if __name__ == '__main__':
     # assign values to node instances
     print(find_path_center([45, 23, 27, 29, 21, 40]))
     pass
+
+    # test logit fit function
+    range_alpha = [-3]
+    range_intercept = [10]
+
+    range_shape = [0.1, 0.5, 1, 2, 3, 5, 7, 9]
+    range_scale = [0.1, 0.2, 0.4, 0.6, 0.8, 1, 2, 5, 10]
+    inn = 0
+    for i in range_shape:
+        for j in range_scale:
+            inn += 1
+            beta = {'intercept': 10, 'shape': i, 'scale': j, 'time': None}  # 1 * 3 vector
+            try:
+                fit_logit(logit)
+            except:
+                print('Run time error at shape{}, scale{}, index {}'.format(i, j, inn % 16))

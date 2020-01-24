@@ -21,7 +21,23 @@ mean, var, skew, kurt = gamma.stats(a, moments='mvsk')
 xmin, xmax = 0, 20
 x = np.linspace(xmin, xmax, 200)
 
-k, theta = [1, 2, 3, 5, 9], [2., 2., 2., 1.0, 0.5]
+k, theta = [1.0, 2, 3, 5., 9., 7.5, 0.5], [2.0, 2., 2., 1., 0.5, 1., 1.]
+lines = []
+
+plt.figure(dpi=150)
+for i in zip(k, theta):
+    y = 1 - gamma.cdf(x, a=i[0], scale=i[1])
+    plt.plot(x, y, label=(r'$k={}, \theta={}$'.format(i[0], 1 / i[1])))
+
+plt.xlim([xmin, xmax])
+plt.xlabel('Accumulated utiltiy (X)')
+plt.ylim([0, 1])
+plt.ylabel(r'$y=1-F(X; k, \theta)$')
+plt.legend()
+plt.title('The discount factor function')
+plt.show()
+
+k, theta = [0.1, 1, 3, 5, 9], [0.1, 0.3, 10, 5, 10]
 lines = []
 
 for i in zip(k, theta):
@@ -37,15 +53,16 @@ plt.show()
 
 fig, axes = plt.subplots(3, 1, dpi=150, figsize=(8, 18))
 
-xmin, xmax = 0, 5
+xmin, xmax = 0, 16
 x = np.linspace(xmin, xmax, 500)
 
 # exp_x = 3.5  # tourists perceive fatigue after visiting 3 to 4 sites. But the first several visits will not decrease so much
 exp_x = [1, 2, 2.5, 3, 4, 6, 8]
 shape = 7
+
 # scale = np.array([0.1, 0.2, 0.3, 0.5, 0.7, 1.])
 
-k, theta =  shape, [_ / shape for _ in exp_x]
+k, theta = shape, [_ / shape for _ in exp_x]
 
 for i in theta:
     # gamma distribution

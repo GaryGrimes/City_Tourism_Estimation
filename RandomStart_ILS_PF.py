@@ -92,14 +92,28 @@ if __name__ == '__main__':
     phi = sim_data.phi
 
     core_process = mp.cpu_count()  # species size (each individual is our parameters here)
-
+    '''First random search'''
     # ranges for modified utility (gamma)
-    range_alpha = [-0.1, -0.3, -1, -3, -10, -30, -100]
-    range_intercept = [10, 30, 100, 300, 1000, 3000, 10000]
-    range_scale = [0.2, 0.3, 0.5, 0.8, 1.0]
-    exp_x = [3.5]
+    # range_alpha = [-0.1, -0.3, -1, -3, -10, -30, -100]
+    # range_intercept = [10, 30, 100, 300, 1000, 3000, 10000]
+    # range_scale = [0.2, 0.3, 0.5, 0.8, 1.0]
+    # exp_x = [3.5]
+    '''Second random search'''
+    # range_alpha = [-3, -10, -30]
+    # range_intercept = [10, 30, 100]
+    # range_shape = [3.5, 7, 35]
+    #
+    # range_exp_x = [1, 2, 2.5, 3, 4, 6, 8]
 
-    Population = [[i, j, q / p, p] for i in range_alpha for j in range_intercept for p in range_scale for q in exp_x]
+    range_alpha = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3]
+    # intercept should be more than 50 times of alpha
+    range_intercept = [100, 300, 1000]
+    range_shape = [0.1, 0.5, 1, 2, 5, 7]
+    range_scale = [0.2, 0.4, 0.6, 0.8, 1, 2, 5]
+
+    # %% generate population
+    Population = [[i, j, p, q]
+                  for i in range_alpha for j in range_intercept for p in range_shape for q in range_scale]
 
     s = []
 
@@ -199,14 +213,16 @@ if __name__ == '__main__':
         del Population[:core_process]
 
     # %% save results into DF
-    Population = [[i, j, q / p, p] for i in range_alpha for j in range_intercept for p in range_scale for q in exp_x]
-    Res = pd.DataFrame(columns=['index', 'a1', 'a2', 'b2', 'b3', 'penalty', 'score'])
+    Population = [[i, j, p, q]
+                  for i in range_alpha for j in range_intercept for p in range_shape for q in range_scale]
+    # Res = pd.DataFrame(columns=['index', 'a1', 'a2', 'b2', 'b3', 'penalty', 'score'])
+    Res = pd.DataFrame(columns=['index', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score'])
     Res['index'] = range(len(Population))
-    Res.loc[:, 'a1':'b3'] = Population
+    Res.loc[:, 'a1':'scale'] = Population
     Res['score'] = Population_scores
     Res['penalty'] = Population_penalties
 
-    file_name = 'ILS_Gamma'  # ILS, with path threshold (filtering), with levenshtein distance
+    file_name = 'final formulation'  # ILS, with path threshold (filtering), with levenshtein distance
     Res.to_excel('Initialization objective values {}.xlsx'.format(file_name))
 
 # %%  todo build the queue check process, to read from queue as soon as it fills, so it never gets very large.
