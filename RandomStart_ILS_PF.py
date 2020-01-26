@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 import datetime
-import time
+import csv
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -73,6 +73,14 @@ if __name__ == '__main__':
 
     print('Setting up agents...')
 
+    today = datetime.date.today().strftime('%m_%d')
+    filename = 'Initialization values final {}.csv'.format(today)
+
+    with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', filename),
+              'w', newline='') as csvFile:  # 去掉每行后面的空格
+        fileHeader = ['index', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score']
+        writer = csv.writer(csvFile)
+        writer.writerow(fileHeader)
     # %% setting up nodes
     node_num = sim_data.node_num  # Number of attractions. Origin and destination are excluded.
 
@@ -105,7 +113,7 @@ if __name__ == '__main__':
     #
     # range_exp_x = [1, 2, 2.5, 3, 4, 6, 8]
 
-    range_alpha = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3]
+    range_alpha = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1]
     # intercept should be more than 50 times of alpha
     range_intercept = [100, 300, 1000]
     range_shape = [0.1, 0.5, 1, 2, 5, 7]
@@ -131,6 +139,7 @@ if __name__ == '__main__':
     progress.start()
     pg_total = len(Population)  # for progressbar need to pre-calculate the total and current index
 
+    csv_index = 0
     while Population:
         itr += 1
         print('------ Evaluation start for iteration {} ------\n'.format(itr))
@@ -210,20 +219,30 @@ if __name__ == '__main__':
                                                                                             s[i][3],
                                                                                             _))
 
+        # write into csv file
+
+        with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', filename),
+                  'a', newline='') as csvFile:
+            for _idx, row in enumerate(zip(para_penalties, scores)):
+                add_info = [csv_index] + s[_idx] + list(row)
+                writer = csv.writer(csvFile)
+                writer.writerow(add_info)
+                csv_index += 1
+
         del Population[:core_process]
 
-    # %% save results into DF
-    Population = [[i, j, p, q]
-                  for i in range_alpha for j in range_intercept for p in range_shape for q in range_scale]
-    # Res = pd.DataFrame(columns=['index', 'a1', 'a2', 'b2', 'b3', 'penalty', 'score'])
-    Res = pd.DataFrame(columns=['index', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score'])
-    Res['index'] = range(len(Population))
-    Res.loc[:, 'a1':'scale'] = Population
-    Res['score'] = Population_scores
-    Res['penalty'] = Population_penalties
-
-    file_name = 'final formulation'  # ILS, with path threshold (filtering), with levenshtein distance
-    Res.to_excel('Initialization objective values {}.xlsx'.format(file_name))
+    # # %% save results into DF
+    # Population = [[i, j, p, q]
+    #               for i in range_alpha for j in range_intercept for p in range_shape for q in range_scale]
+    # # Res = pd.DataFrame(columns=['index', 'a1', 'a2', 'b2', 'b3', 'penalty', 'score'])
+    # Res = pd.DataFrame(columns=['index', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score'])
+    # Res['index'] = range(len(Population))
+    # Res.loc[:, 'a1':'scale'] = Population
+    # Res['score'] = Population_scores
+    # Res['penalty'] = Population_penalties
+    #
+    # file_name = 'final formulation'  # ILS, with path threshold (filtering), with levenshtein distance
+    # Res.to_excel('Initialization objective values {}.xlsx'.format(file_name))
 
 # %%  todo build the queue check process, to read from queue as soon as it fills, so it never gets very large.
 #

@@ -2,6 +2,8 @@
 from matplotlib import pyplot as plt
 import numpy as np
 from scipy.stats import gamma
+import csv
+import os
 
 
 def generate_y(_x, offset, steepness=1):
@@ -65,3 +67,19 @@ for i in range(1000):
 for i in range(1000):
     res = util_vecotr * np.exp(-0.5 * cumu_util)
 
+# %% functionality of csv
+
+with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', 'Grid_search_instance.csv'),
+          'w', newline='') as csvFile:
+    fileHeader = ['index', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score']
+    writer = csv.writer(csvFile)
+    writer.writerow(fileHeader)
+
+# %% add new rows
+with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', 'Grid_search_instance.csv'),
+          'a', newline='') as csvFile:
+    add_info = ["2", 150, 3, 2, 5, 0.1, 0.01]
+    writer = csv.writer(csvFile)
+    writer.writerow(add_info)
+    # or 列表里的列表
+    # writer.writerows([fileHeader, d1, d2])
