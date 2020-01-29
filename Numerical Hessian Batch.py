@@ -68,13 +68,11 @@ def eval_fun(s):  # s is a single set of parameters, not species
     jobs = []
     penalty_queue = mp.Queue()  # queue, to save results for multi_processing
 
-    # start process
-
     for idx, chunk in enumerate(pop):
-        alpha = list(s[:2])
+        alpha = s[0]
         # 5 was replaced by a larger value of 100!!!
 
-        beta = [100] + list(s[2:])
+        beta = {'intercept': s[1], 'shape': s[2], 'scale': s[3]}
         data_input = {'alpha': alpha, 'beta': beta,
                       'phi': phi,
                       'util_matrix': utility_matrix,
@@ -84,6 +82,48 @@ def eval_fun(s):  # s is a single set of parameters, not species
                       'dist_matrix': edge_distance_matrix}
 
         process = mp.Process(target=SolverUtility.solver, args=(penalty_queue, idx, node_num, chunk),
+                             kwargs=data_input, name='P{}'.format(idx + 1))
+        jobs.append(process)
+        process.start()
+
+    for j in jobs:
+        # wait for processes to complete and join them
+        j.join()
+
+    # retrieve parameter penalties from queue, with total penalty for all enumerated tourists in km
+    penalty_total = 0
+    while True:
+        if penalty_queue.empty():  # 如果队列空了，就退出循环
+            break
+        else:
+            penalty_total += penalty_queue.get()[1]  # 0是index，1才是data
+    return penalty_total
+
+
+def eval_fun_null(s):  # s is a single set of parameters, not species
+    # divide population into chunks to initiate multi-processing.
+    n_cores = mp.cpu_count()
+    pop = chunks(agent_database, n_cores)
+    # for i in pop:
+    #     print(len(i))  # 尽可能平均
+
+    jobs = []
+    penalty_queue = mp.Queue()  # queue, to save results for multi_processing
+
+    for idx, chunk in enumerate(pop):
+        alpha = s[0]
+        # 5 was replaced by a larger value of 100!!!
+
+        beta = {'intercept': s[1], 'shape': s[2], 'scale': s[3]}
+        data_input = {'alpha': alpha, 'beta': beta,
+                      'phi': phi,
+                      'util_matrix': utility_matrix,
+                      'time_matrix': edge_time_matrix,
+                      'cost_matrix': edge_cost_matrix,
+                      'dwell_matrix': dwell_vector,
+                      'dist_matrix': edge_distance_matrix}
+
+        process = mp.Process(target=SolverUtility.solver_null, args=(penalty_queue, idx, node_num, chunk),
                              kwargs=data_input, name='P{}'.format(idx + 1))
         jobs.append(process)
         process.start()
@@ -253,47 +293,37 @@ if __name__ == '__main__':
     s = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
 
     # current near optimal after grid search (Jan. 9)
-    near_optimal = [-1, -0.1, 10, 0.03]
-    current_optimal = [-2.966, -0.310, 10.000, 0.031]
+    near_optimal = [0.03, 300, 0.1, 0.2]
+    NULL = [0, 300, 0, 0]
 
     # calculate evaluation time
-    start_time = datetime.datetime.now()
-    res = eval_fun(near_optimal)
-    print('Penalty for near optimal: {}'.format(res))
-    end_time = datetime.datetime.now()
-    print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
+    if input('Evaluate the grid search near optimal?'):
+        start_time = datetime.datetime.now()
+        res = eval_fun(near_optimal)
+        print('Penalty for near optimal: {}'.format(res))
+        end_time = datetime.datetime.now()
+        print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
+        print('Evaluated penalty: %.2f, grid search penalty %.2f' % (res, 11073.29102))
 
     # calculate evaluation time
-    start_time = datetime.datetime.now()
-    res = eval_fun(current_optimal)
-    print('Penalty for current optimal: {}'.format(res))
-    end_time = datetime.datetime.now()
-    print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
 
-    print('Evaluated penalty: %.2f, grid search penalty %.2f' % (res, 10950.17261633345))
-    #
-    # # %% test for null case
-    # # calculate evaluation time
-    # start_time = datetime.datetime.now()
-    #
-    # # penalty of the null case
-    # penalty_null = eval_fun([0, 0, 0, 0])
-    #
-    # print('Penalty for null case: {}'.format(penalty_null))
-    #
-    # end_time = datetime.datetime.now()
-    #
-    # print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
-    #
-    # print('Evaluated penalty for the null case: %.2f' % penalty_null)
+    if input('Evaluate the null case?'):
+        start_time = datetime.datetime.now()
+        res_null = eval_fun_null(NULL)
+        print('Penalty for null case: {}'.format(res_null))
+        end_time = datetime.datetime.now()
+        print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
+
+
+
 
     # %% numerical hessian and gradients
 
-    res_Grad = nd.Gradient(eval_fun)(s)
-    res_Hessian = nd.Hessian(eval_fun_norm)(current_optimal)
-    print('Numerical Hessian at {}, with value: {}'.format(current_optimal, res_Hessian))
-
-    variance = np.linalg.inv(-res_Hessian)
-    std_err = np.sqrt(np.diag(variance))
-
-    print('t value: {}'.format(np.array(current_optimal) / std_err))
+    # res_Grad = nd.Gradient(eval_fun)(s)
+    # res_Hessian = nd.Hessian(eval_fun_norm)(current_optimal)
+    # print('Numerical Hessian at {}, with value: {}'.format(current_optimal, res_Hessian))
+    #
+    # variance = np.linalg.inv(-res_Hessian)
+    # std_err = np.sqrt(np.diag(variance))
+    #
+    # print('t value: {}'.format(np.array(current_optimal) / std_err))

@@ -18,16 +18,18 @@ mean, var, skew, kurt = gamma.stats(a, moments='mvsk')
 # plot gamma cdf. cdf(x, a, loc=0, scale=1), a>0 is shape coefficient, scale = 1.0 / lambda.
 # lambda越大，scale越小，曲线越抖.
 # expected value = (a-1) * scale
-xmin, xmax = 0, 20
+xmin, xmax = 0, 4
 x = np.linspace(xmin, xmax, 200)
 
-k, theta = [1.0, 2, 3, 5., 9., 7.5, 0.5], [2.0, 2., 2., 1., 0.5, 1., 1.]
+# k, theta = [1.0, 2, 3, 5., 9., 7.5, 0.5], [2.0, 2., 2., 1., 0.5, 1., 1.]
+k, theta = [1, 0.5, 0.1, 0.5, 2], [0.4, 0.8, 5, 0.6, 0.2]
+
 lines = []
 
 plt.figure(dpi=150)
 for i in zip(k, theta):
     y = 1 - gamma.cdf(x, a=i[0], scale=i[1])
-    plt.plot(x, y, label=(r'$k={}, \theta={}$'.format(i[0], 1 / i[1])))
+    plt.plot(x, y, label=(r'$k={}, \theta={:.2f}$'.format(i[0], 1 / i[1])))
 
 plt.xlim([xmin, xmax])
 plt.xlabel('Accumulated utiltiy (X)')
@@ -42,7 +44,7 @@ lines = []
 
 for i in zip(k, theta):
     y = 1 - gamma.cdf(x, a=i[0], scale=i[1])
-    plt.plot(x, y, label=(r'$\alpha={}, \beta={}$'.format(i[0], 1 / i[1])))
+    plt.plot(x, y, label=(r'$\alpha={}, \beta={:.3f}$'.format(i[0], 1 / i[1])))
 
 plt.xlim([xmin, xmax])
 plt.ylim([0, 1])

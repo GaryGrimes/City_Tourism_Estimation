@@ -29,9 +29,6 @@ class Edge(object):
         self.travel_distance = dist
         self.visit = 0
 
-    def edge_util_callback(self, alpha):
-        alpha_1, alpha_2, _phi = alpha[0], alpha[1], self.phi
-        return alpha_1 * self.travel_time + alpha_2 * _phi * self.travel_cost
 
 
 def modify_travel_time():

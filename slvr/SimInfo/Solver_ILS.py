@@ -6,8 +6,6 @@ Last modified on Nov. 11. Last modified on Jan. 18.
  """
 
 import numpy as np
-import pandas as pd
-import os
 import Agent
 import Network
 import math
@@ -76,7 +74,7 @@ area_centers = {1: [135.8246, 35.095],
 
 fit_params = []
 
-insertion_penalty = 3  # 3 times larger than substitution
+insertion_penalty = 100  # 100 times larger than substitution
 
 
 def logit(x, a, b, c):  # Logistic B equation from zunzun.com
@@ -247,7 +245,10 @@ def initial_solution():
     for _i in range(Network.node_num):
         # cost = Network.time_mat[o, _i] + Network.time_mat[_i, d]  # + Network.dwell_vec[_i]
         """updated on Jan. 21"""
-        cost = abs(arc_util_callback(o, _i) + arc_util_callback(_i, d))  # cost have positive value
+        if o == d == _i:
+            cost = 0.00001
+        else:
+            cost = abs(arc_util_callback(o, _i) + arc_util_callback(_i, d))  # cost have positive value
         distance.append(cost)
 
         _benefit = np.dot(Agent.pref, Network.util_mat[_i]) / cost
@@ -377,7 +378,115 @@ def find_path_center(_path):
     return _final_center
 
 
-# -------- here defines and adjusts prediction error criteria -------- #
+""" Methods for evaluating penalty for the null case. Where the TTDP degrades to a typical OP problem."""
+
+
+def initial_solution_null():
+    o, d, t_max = Agent.Origin, Agent.Destination, Agent.t_max
+
+    distance, benefit = [], []
+    for _i in range(Network.node_num):
+        # cost = Network.time_mat[o, _i] + Network.time_mat[_i, d]  # + Network.dwell_vec[_i]
+        """updated on Jan. 21"""
+        if o == d == _i:
+            cost = 0.00001
+        else:
+            cost = abs(arc_util_callback(o, _i) + arc_util_callback(_i, d))  # cost have positive value
+        distance.append(cost)
+
+        _benefit = np.dot(Agent.pref, Network.util_mat[_i]) / cost  # Agent.pref will degrade to [1,1,1]
+        benefit.append(_benefit)
+
+    # index is sorted such that the first entry has smallest benefit for insertion (from o to d)
+    index = list(np.argsort(benefit))
+    # except for node_j
+
+    # check time limitation
+    # nodes with higher benefits at front
+    available_nodes = [_x for _x in index if time_callback([o, _x, d]) <= t_max][::-1]
+
+    # if over time limit
+    if not available_nodes:
+        return []
+
+    # Otherwise, randomly pick an available node for insertion
+    initial_path, success = [], 1
+    comp_travel_util = arc_util_callback(o, d)  # a compulsive cost for traveling from o to d
+    while not initial_path or eval_util_null(
+            initial_path) < comp_travel_util:  # no better choice than going directly to d
+        if available_nodes:
+            node_to_insert = available_nodes.pop(np.random.randint(len(available_nodes)))
+            initial_path = [o, node_to_insert, d]
+        else:
+            success = 0
+            break
+
+    return initial_path if success else [o, d]
+
+
+def node_util_callback_null(to_node):
+    # modified on Jan. 17
+    global beta
+    _intercept, _shape, _scale = beta['intercept'], beta['shape'], beta['scale']  # scale < 1
+    # always presume a negative discount factor
+    _visit_util = exp_util_callback_null(to_node)
+
+    if 'time' in beta:
+        return _intercept * np.dot(Agent.pref, _visit_util) + beta['time'] * Network.dwell_vec[to_node]
+    return _intercept * np.dot(Agent.pref, _visit_util)
+
+
+def exp_util_callback_null(visit_node):
+    # no diminishing marginal utility, no "fatigue"
+    return Network.util_mat[visit_node]
+
+
+def eval_util_null(_route):  # use array as input. The memoizer must accept agent's preference as well.
+    res = 0
+    if len(_route) <= 2:
+        return float("-inf")
+    else:
+        _k = 1
+        for _k in range(1, len(_route) - 1):
+            # arc and node utility
+            res += arc_util_callback(_route[_k - 1], _route[_k]) + node_util_callback_null(_route[_k])
+        res += arc_util_callback(_route[_k], _route[_k + 1])
+        return res
+    pass
+
+
+def insert_null(order, best_score):
+    t_max = Agent.t_max
+    local_optimum = 0
+    best_node, best_pos = None, None
+    check = best_score  # score record
+
+    _feasibility = 1
+    for ii in range(len(Node_list)):
+        cur_node = Node_list[ii]
+        if cur_node.visit == 0:
+            for jj in range(1, len(order)):
+                path_temp = order[:jj] + [ii] + order[jj:]  # node index is ii
+                # check time budget feasibility
+                _feasibility = time_callback(path_temp) <= t_max
+                # calculate utility and save best score and best position
+                if _feasibility:
+                    _utility = eval_util_null(path_temp)
+                    if _utility > best_score:  # update
+                        best_score, best_node, best_pos = _utility, ii, jj
+
+    if best_score > check:
+        order = order[:best_pos] + [best_node] + order[best_pos:]
+        # update the node list: flag the visited nodes
+        for ii in range(1, len(order) - 1):
+            Node_list[order[ii]].visit = 1
+    else:
+        local_optimum = 1
+    return local_optimum, order, best_score
+
+
+""" below  defines and adjusts prediction error criteria #"""
+
 
 def path_penalty(path_obs, path_pdt):
     """Calculates the difference between observed and predicted path in meters.
@@ -398,7 +507,8 @@ def path_penalty(path_obs, path_pdt):
     # compare the distance between the center of observed path and the inserted node as the insertion cost
     center_obs = find_path_center(path_obs)
 
-    insertion_cost = insertion_penalty * [haver_dist(*center_obs, *area_centers[_ + 1]) for _ in range(len(Node_list))]
+    insertion_cost = insertion_penalty * np.array(
+        [haver_dist(*center_obs, *area_centers[_ + 1]) for _ in range(len(Node_list))])
 
     # check empty path
     path_a, path_b = path_obs[1:-1], path_pdt[1:-1]
@@ -423,7 +533,7 @@ def path_penalty(path_obs, path_pdt):
     rows, cols = len(path_a) + 1, len(path_b) + 1
 
     # the editing distance matrix
-    dist = [[0 for _ in range(cols)] for _ in range(rows)]
+    dist = np.array([[0 for _ in range(cols)] for _ in range(rows)])
     # source prefixes can be transformed into empty strings
 
     # by deletions:
@@ -444,7 +554,8 @@ def path_penalty(path_obs, path_pdt):
             dist[row][col] = min(dist[row - 1][col] + deletes,
                                  dist[row][col - 1] + inserts,
                                  dist[row - 1][col - 1] + subs)  # substitution
-    return dist[row][col]
+    # balance the result by dividing (insertion_penalty + 1)
+    return dist[row][col] / (insertion_penalty + 1)
 
     # TODO case when path length equal
 

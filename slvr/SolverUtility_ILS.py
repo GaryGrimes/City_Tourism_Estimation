@@ -217,11 +217,12 @@ class SolverUtility(object):
 
     @staticmethod
     def solver_null(q, process_idx, node_num, agent_database, **kwargs):
+        # calculate evaluation results in the null case
         """ Using Levenshtein distance, with path threshold filter """
         # pass variables
-        alpha, beta, phi, util_matrix, time_matrix, \
-        cost_matrix, dwell_matrix, dist_matrix = kwargs['alpha'], kwargs['beta'], kwargs['phi'], kwargs[
-            'util_matrix'], kwargs['time_matrix'], kwargs['cost_matrix'], kwargs['dwell_matrix'], kwargs['dist_matrix']
+        util_matrix, time_matrix, cost_matrix, dwell_matrix, \
+        dist_matrix = kwargs['util_matrix'], kwargs['time_matrix'], \
+                      kwargs['cost_matrix'], kwargs['dwell_matrix'], kwargs['dist_matrix']
 
         # behavioral parameters data setup
 
@@ -247,21 +248,21 @@ class SolverUtility(object):
 
         Solver_ILS.edge_setup(**edge_properties)
 
-        iteration_size = len(agent_database)
-
         for _idd, _agent in enumerate(agent_database):
             if _idd > 0 and _idd % 500 == 0:
-                print(
-                    '--- Running optimal tours for the {} agent in {} for process {}'.format(
-                        _idd, len(agent_database), mp.current_process().name))
+                str_time = datetime.datetime.now().strftime('%H:%M')
+                print('{} --- Running optimal tours for the {} agent '
+                      'in {} for process {}'.format(str_time, _idd, len(agent_database), mp.current_process().name))
 
-            pref = _agent.preference
+            # pref = _agent.preference
+            pref = np.array([1 / 3, 1 / 3, 1 / 3])
             observed_path = _agent.path_obs
             t_max, origin, destination = _agent.time_budget, observed_path[0] - 1, observed_path[-1] - 1
             visit_history = {}
 
             if pref is None or observed_path is None:
                 continue
+
             # skip empty paths (no visited location)
             if len(observed_path) < 3:
                 continue
@@ -285,10 +286,12 @@ class SolverUtility(object):
             # %% strat up solver
             no_init_flag = 0
             # solver initialization
-            initial_path = Solver_ILS.initial_solution()
+            initial_path = Solver_ILS.initial_solution_null()
 
-            if len(initial_path) <= 2:
-                no_init_flag = 1
+            if len(initial_path) < 2:  # time budget too small
+                path_pdt.append(Solver_ILS.comp_fill())
+            elif len(initial_path) == 2:  # negative total utility for any visit
+                path_pdt.append(initial_path)
             else:
                 first_visit = initial_path[1]
                 Solver_ILS.Node_list[first_visit].visit = 1
@@ -310,12 +313,12 @@ class SolverUtility(object):
                     # print(Order)
 
                     while local_optimum == 0:
-                        local_optimum, order, best_score = Solver_ILS.insert(order, best_score)
+                        local_optimum, order, best_score = Solver_ILS.insert_null(order, best_score)
 
                     counter_2 += 1  # 2指inner loop的counter
                     v = len(order) - 1
 
-                    _u.append(best_score)  # TODO U is utility memo
+                    _u.append(best_score)  # U is utility memoizer
                     _u8.append(v)
                     _U10.append(max(_u))
 
@@ -338,26 +341,10 @@ class SolverUtility(object):
                     if s >= min(_u8):
                         s = s - min(_u8) + 1
 
-                    order = Solver_ILS.shake(order, s, R)
-
-            # print('Near optimal path: {}, with total time {} min, utility {}.'.format(final_order,
-            #                                                                           Solver_ILS.time_callback(
-            #                                                                               final_order),
-            #                                                                           Solver_ILS.eval_util(
-            #                                                                               final_order)))
-
-            # Prediction penalty evaluation. Compare the predicted paths with observed one.
+                    order = Solver_ILS.shake(order, s, R)  # break sequence
 
             path_obs = list(
                 np.array(_agent.path_obs) - 1)  # attraction indices in solver start from 0 (in survey start from 1)
-
-            # last modified on Oct. 24 16:29 2019
-            # last modified on Dec. 20
-
-            if no_init_flag:
-                # do compulsory fill
-                path_pdt.append(Solver_ILS.comp_fill())
-                pass
 
             """对比的是combinatorial path score"""
             selected_path = []
@@ -367,7 +354,7 @@ class SolverUtility(object):
                 # evaluate scores for all path predicted (not penalty with the observed path here)
                 path_pdt_score = []
                 for _path in path_pdt:
-                    path_pdt_score.append(Solver_ILS.eval_util(_path))  # a list of penalties
+                    path_pdt_score.append(Solver_ILS.eval_util_null(_path))  # a list of penalties
 
                 filter_ratio = 0.15  # predicted paths with penalties within 15% interval
                 max_score = max(path_pdt_score)  # max utility score for current path
@@ -1950,8 +1937,8 @@ if __name__ == '__main__':
     # alpha = -5.392
     # beta = {'intercept': 8.819, 'shape': 3.855, 'scale': 0.989}
 
-    alpha = -3
-    beta = {'intercept': 100, 'shape': 0.1, 'scale': 0.6}
+    alpha = 0.027327872
+    beta = {'intercept':  327.960607, 'shape': 1, 'scale': 0.4}
 
     pref = [0.5, 0.3, 0.2]  # just for test
     observed_path = [29, 27, 24, 25, 29]  # index starts from 1
@@ -2022,7 +2009,7 @@ if __name__ == '__main__':
     Solver_ILS.eval_util_print(path_obs)
 
     # %% test path penalty function
-    path_a, path_b = [28, 27, 26, 23, 24, 28], [28, 27, 23, 24, 28]
+    path_a, path_b = [28, 27, 26, 23, 24, 28], [28, 23, 24, 27, 22, 28]
     path_d = [28, 20, 13, 22, 25, 28]
     path_c = [28, 22, 23, 24, 23, 28]
 

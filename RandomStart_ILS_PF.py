@@ -112,15 +112,22 @@ if __name__ == '__main__':
     # range_shape = [3.5, 7, 35]
     #
     # range_exp_x = [1, 2, 2.5, 3, 4, 6, 8]
+    """Jan. 26"""
+    # range_alpha = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1]
+    # # intercept should be more than 50 times of alpha
+    # range_intercept = [100, 300, 1000]
+    # range_shape = [0.1, 0.5, 1, 2, 5, 7]
+    # range_scale = [0.2, 0.4, 0.6, 0.8, 1, 2, 5]
 
-    range_alpha = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1]
+    range_alpha = [0.03]
     # intercept should be more than 50 times of alpha
-    range_intercept = [100, 300, 1000]
+    range_intercept = [300]
     range_shape = [0.1, 0.5, 1, 2, 5, 7]
     range_scale = [0.2, 0.4, 0.6, 0.8, 1, 2, 5]
 
     # %% generate population
-    Population = [[i, j, p, q]
+
+    Population = [[np.random.normal(i, 0.2 * i), np.random.normal(j, 0.1 * j), p, q]
                   for i in range_alpha for j in range_intercept for p in range_shape for q in range_scale]
 
     s = []

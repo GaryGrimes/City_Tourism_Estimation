@@ -324,18 +324,19 @@ if __name__ == '__main__':
     # parameter = [-0.05, -0.05, 0.03, 0.1]
     # s = [[]]  # todo initialize s with good results in initialization evaluation
 
-    initial_eval_filename = 'Initialization objective values ILS_Gamma.xlsx'  # generated on Jan. 10
+    initial_eval_filename = 'Initialization values final 01_29.xlsx'  # generated on Jan. 10
 
     initial_eval_res = pd.read_excel(
-        os.path.join(os.path.dirname(__file__), 'Evaluation result',
-                     'Jan 20 grid search', initial_eval_filename), index_col=0)
+        os.path.join(os.path.dirname(__file__), 'Evaluation result', initial_eval_filename), index_col=0)
 
     # sort values by penalty
     temp_df = initial_eval_res.sort_values(by=['penalty'])
-    s = temp_df.loc[:, 'a1':'b3'].values[:(inn)]
+    s = temp_df.loc[:, 'a1':'scale'].values[:(inn)]
 
     # define mutation bounds for the parameters
-    bounds = np.array([max(abs(s[:, _])) for _ in range(s.shape[1])])
+    # bounds = np.array([max(abs(s[:, _])) for _ in range(s.shape[1])])
+    bounds = np.array([0.1, 700, 7, 3])
+
     s = s.tolist()
 
     # start iterations
@@ -392,9 +393,9 @@ if __name__ == '__main__':
 
     # %% save results into DF
     Res = pd.DataFrame(
-        columns=['itr', 'a1', 'a2', 'b2', 'b3', 'penalty', 'score', 'record_penalty', 'record', 'gnr_mean'])
+        columns=['itr', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score', 'record_penalty', 'record', 'gnr_mean'])
     Res['itr'] = range(itr_max)
-    Res.loc[:, 'a1':'b3'] = x_max
+    Res.loc[:, 'a1':'scale'] = x_max
     Res['score'] = gnr_max
     Res['penalty'] = score2penalty(gnr_max)[0]
     Res['record_penalty'] = score2penalty(y_max)[0]
