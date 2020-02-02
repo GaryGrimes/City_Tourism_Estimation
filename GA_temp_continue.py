@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from slvr.SolverUtility_ILS import SolverUtility
 import multiprocessing as mp
 import slvr.SimDataProcessing as sim_data
+import csv
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
@@ -60,7 +61,6 @@ def score2penalty(*args):
 def evaluation(_s, _itr):
     """Evaluation of each population using MultiProcessing. Results are returned to the mp.queue in tuples."""
     global PARAMETER
-    global memo_parameter, memo_penalty
     global phi, utility_matrix, dwell_vector, edge_time_matrix, edge_cost_matrix, edge_distance_matrix
 
     print('------ Iteration {} ------\n'.format(_itr + 1))
@@ -80,30 +80,23 @@ def evaluation(_s, _itr):
         except AttributeError:
             pass
 
-        # check existence of parameter in memory
-        if parameter in memo_parameter:
-            # sent back penalty tuple if exists in history
-            penalty_queue.put((idx, memo_penalty[memo_parameter.index(parameter)]))
-            print('\nThe {}th parameter is sent from history (with index {}), with score: {}'.format(
-                idx, memo_parameter.index(parameter), memo_penalty[memo_parameter.index(parameter)]))
-        else:
-            # with gamma utility function
-            ALPHA = parameter[0]
-            BETA = {'intercept': parameter[1], 'shape': parameter[2], 'scale': parameter[3]}
+        # with gamma utility function
+        ALPHA = parameter[0]
+        BETA = {'intercept': parameter[1], 'shape': parameter[2], 'scale': parameter[3]}
 
-            data_input = {'alpha': ALPHA, 'beta': BETA,
-                          'phi': phi,
-                          'util_matrix': utility_matrix,
-                          'time_matrix': edge_time_matrix,
-                          'cost_matrix': edge_cost_matrix,
-                          'dwell_matrix': dwell_vector,
-                          'dist_matrix': edge_distance_matrix}
+        data_input = {'alpha': ALPHA, 'beta': BETA,
+                      'phi': phi,
+                      'util_matrix': utility_matrix,
+                      'time_matrix': edge_time_matrix,
+                      'cost_matrix': edge_cost_matrix,
+                      'dwell_matrix': dwell_vector,
+                      'dist_matrix': edge_distance_matrix}
 
-            # start process
-            process = mp.Process(target=SolverUtility.solver, args=(penalty_queue, idx, node_num, agent_database),
-                                 kwargs=data_input, name='P{}'.format(idx + 1))
-            jobs.append(process)
-            process.start()
+        # start process
+        process = mp.Process(target=SolverUtility.solver, args=(penalty_queue, idx, node_num, agent_database),
+                             kwargs=data_input, name='P{}'.format(idx + 1))
+        jobs.append(process)
+        process.start()
 
     for _j in jobs:
         # wait for processes to complete and join them
@@ -128,15 +121,6 @@ def evaluation(_s, _itr):
             if _i == _tuple[0]:
                 para_penalties.append(_tuple[1])  # Caution! 目前传回的tuple[1]是一个dict!!!
                 break
-
-    """parameter memoizer disabled"""
-
-    # try:
-    #     memo_parameter.extend(_s.tolist())
-    # except AttributeError:
-    #     memo_parameter.extend(_s)
-    #
-    # memo_penalty.extend(para_penalties)
 
     PARAMETER[_itr] = _s  # save parameters of each iteration into the PARAMETER dict.
 
@@ -169,24 +153,6 @@ def selection(s_size, _scores):
     indices.extend(insertion_size * [best_one_idx])
     return indices
 
-
-# def selection(s_size, _scores):
-#     insertion_size = 3
-#     best_one_idx = np.argsort(_scores)[-1]
-#     f_sum = sum(_scores)
-#     prob = [_ / f_sum for _ in _scores]
-#     # calculate accumulated prob
-#     prob_acu = [sum(prob[:_]) + prob[_] for _ in range(len(prob))]
-#     prob_acu[-1] = 1
-#
-#     # return selected idx
-#     indices = []
-#     for _ in range(s_size - insertion_size):
-#         random_num = np.random.rand()
-#         indices.append(next(_x[0] for _x in enumerate(prob_acu) if _x[1] > random_num))  # x is a tuple
-#     # insert best results from history
-#     indices.extend(insertion_size * [best_one_idx])
-#     return indices
 
 def mutation(prob, best_score, population, population_scores):
     insertion_size = round(len(population) / 3)
@@ -312,18 +278,13 @@ if __name__ == '__main__':
     inn = 16  # species size (each individual in current generation is a vector of behavioral parameters
 
     # itr_max = 200
-    itr_max = 200
+    itr_max = 100
     prob_mut = 1  # parameter mutation probability (always mutate to go random search)
 
-    memo_parameter, memo_penalty = [], []  # memo stores parameters from last 2 iterations
     PARAMETER = {}  # save parameters in each iteration
 
     y_mean, y_max, x_max, gnr_max = [], [], [], []  # 记录平均score, 每一世代max score， 每世代最佳个体
     # generate first population
-
-    # generate first population. s = []  # species set of parameters
-    # parameter = [-0.05, -0.05, 0.03, 0.1]
-    # s = [[]]  # todo initialize s with good results in initialization evaluation
 
     initial_eval_filename = 'Initialization values final 01_29.xlsx'  # generated on Jan. 10
 
@@ -333,6 +294,45 @@ if __name__ == '__main__':
     # sort values by penalty
     temp_df = initial_eval_res.sort_values(by=['penalty'])
     s = temp_df.loc[:, 'a1':'scale'].values[:(inn)]
+
+
+    filename = '{} iteration result.csv'.format(os.path.basename(__file__).split('.')[0])
+
+    with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', 'RandomGA', filename),
+              'w', newline='') as csvFile:  # 去掉每行后面的空格
+        fileHeader = ['itr', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score', 'record_penalty', 'record',
+                      'gnr_mean']
+        writer = csv.writer(csvFile)
+        writer.writerow(fileHeader)
+
+    # todo: read evaluated results into variables, and save into csv file
+    temp_eval_filename = ' 填入文件名 '  # generated on Jan. 10
+
+    temp_res = pd.read_excel(
+        os.path.join(os.path.dirname(__file__), 'Evaluation result', 'RandomGA', temp_eval_filename), index_col=0)
+
+
+    Res = pd.DataFrame(
+        columns=['itr', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score', 'record_penalty', 'record',
+                 'gnr_mean'])
+    Res['itr'] = range(itr_max)
+    Res.loc[:, 'a1':'scale'] = x_max
+    Res['score'] = gnr_max
+    Res['penalty'] = score2penalty(gnr_max)[0]
+    Res['record_penalty'] = score2penalty(y_max)[0]
+    Res['record'] = y_max
+    Res['gnr_mean'] = y_mean
+
+
+    # todo: write each iteration into csv file
+
+    with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', filename),
+              'a', newline='') as csvFile:
+        for _idx, row in enumerate(zip(para_penalties, scores)):
+            add_info = [csv_index] + s[_idx] + list(row)
+            writer = csv.writer(csvFile)
+            writer.writerow(add_info)
+            csv_index += 1
 
     # define mutation bounds for the parameters
     # bounds = np.array([max(abs(s[:, _])) for _ in range(s.shape[1])])
@@ -392,9 +392,11 @@ if __name__ == '__main__':
             except:
                 pass
 
+        # todo: save each iteration into csv file
     # %% save results into DF
     Res = pd.DataFrame(
-        columns=['itr', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score', 'record_penalty', 'record', 'gnr_mean'])
+        columns=['itr', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score', 'record_penalty', 'record',
+                 'gnr_mean'])
     Res['itr'] = range(itr_max)
     Res.loc[:, 'a1':'scale'] = x_max
     Res['score'] = gnr_max

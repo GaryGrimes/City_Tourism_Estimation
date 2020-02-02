@@ -407,18 +407,17 @@ class SolverUtility(object):
         q.put((process_idx, data['penalty']))
 
     @staticmethod
-    def solver_trip_stat(q, process_idx, node_num, agent_database, **kwargs):
+    def solver_trip_stat(q, process_idx, node_num, agent_database, dir_name, **kwargs):
         """ Predict tours and generate trip frequency table for a single set of parameters. """
 
         # Levenshtein distance, with path threshold filter
 
         # pass variables
-        alpha, beta, phi, util_matrix, time_matrix, \
-        cost_matrix, dwell_matrix, dist_matrix = kwargs['alpha'], kwargs['beta'], kwargs['phi'], kwargs[
-            'util_matrix'], kwargs['time_matrix'], kwargs['cost_matrix'], kwargs['dwell_matrix'], kwargs['dist_matrix']
+        util_matrix, time_matrix, cost_matrix, dwell_matrix, \
+        dist_matrix = kwargs['util_matrix'], kwargs['time_matrix'], \
+                      kwargs['cost_matrix'], kwargs['dwell_matrix'], kwargs['dist_matrix']
 
         # behavioral parameters data setup
-
         Solver_ILS.alpha = kwargs['alpha']
         Solver_ILS.beta = kwargs['beta']
         Solver_ILS.phi = kwargs['phi']
@@ -442,6 +441,9 @@ class SolverUtility(object):
                            'edge_distance_matrix': dist_matrix}
 
         Solver_ILS.edge_setup(**edge_properties)
+
+        # gamma distribution and logit fit
+        Solver_ILS.fit_logit(Solver_ILS.logit)
 
         iteration_size = len(agent_database)
 
@@ -479,12 +481,13 @@ class SolverUtility(object):
             path_pdt = []
 
             # %% strat up solver
-            no_init_flag = 0
             # solver initialization
             initial_path = Solver_ILS.initial_solution()
 
-            if len(initial_path) <= 2:
-                no_init_flag = 1
+            if len(initial_path) < 2:  # time budget too small
+                path_pdt.append(Solver_ILS.comp_fill())
+            elif len(initial_path) == 2:  # negative total utility for any visit
+                path_pdt.append(initial_path)
             else:
                 first_visit = initial_path[1]
                 Solver_ILS.Node_list[first_visit].visit = 1
@@ -511,7 +514,7 @@ class SolverUtility(object):
                     counter_2 += 1  # 2指inner loop的counter
                     v = len(order) - 1
 
-                    _u.append(best_score)  # TODO U is utility memo
+                    _u.append(best_score)  # U is utility memoizer
                     _u8.append(v)
                     _U10.append(max(_u))
 
@@ -534,26 +537,10 @@ class SolverUtility(object):
                     if s >= min(_u8):
                         s = s - min(_u8) + 1
 
-                    order = Solver_ILS.shake(order, s, R)
-
-            # print('Near optimal path: {}, with total time {} min, utility {}.'.format(final_order,
-            #                                                                           Solver_ILS.time_callback(
-            #                                                                               final_order),
-            #                                                                           Solver_ILS.eval_util(
-            #                                                                               final_order)))
-
-            # Prediction penalty evaluation. Compare the predicted paths with observed one.
+                    order = Solver_ILS.shake(order, s, R)  # break sequence
 
             path_obs = list(
                 np.array(_agent.path_obs) - 1)  # attraction indices in solver start from 0 (in survey start from 1)
-
-            # last modified on Oct. 24 16:29 2019
-            # last modified on Dec. 20
-
-            if no_init_flag:
-                # do compulsory fill
-                path_pdt.append(Solver_ILS.comp_fill())
-                pass
 
             """对比的是combinatorial path score"""
             selected_path = []
@@ -561,8 +548,12 @@ class SolverUtility(object):
                 selected_path = list(path_pdt)
             else:
                 # evaluate scores for all path predicted (not penalty with the observed path here)
+                # select only 10 paths with high scores for filtering
+                path_pdt = path_pdt[-10:]
+
                 path_pdt_score = []
                 for _path in path_pdt:
+                    # The memoizer must accept agent's preference as well.
                     path_pdt_score.append(Solver_ILS.eval_util(_path))  # a list of penalties
 
                 filter_ratio = 0.15  # predicted paths with penalties within 15% interval
@@ -576,6 +567,7 @@ class SolverUtility(object):
                         selected_path.append(path_pdt[_])
                     else:
                         break
+
                 # at least 3 paths in the set
                 if len(selected_path) < 3:
                     selected_path = []
@@ -594,10 +586,7 @@ class SolverUtility(object):
                     best_path_predicted, lowest_penalty = _path, res
                 if res < lowest_penalty:
                     best_path_predicted, lowest_penalty = _path, res
-                # print('With path score: %.2f, time: %d' % (solver.eval_util(_path, Pref).
-                # solver.time_callback(_path)))
-                # print('Penalty: {}'.format(res))
-                # print_path(_path)
+
 
             # WRITE PREDICTED PATH AND PENALTY
 
@@ -614,7 +603,7 @@ class SolverUtility(object):
                     continue
 
         # if oversize (capacity limit) encountered, try dump the results by pickle and read again
-        name = 'predicted_trip_table_{}.pickle'.format(process_idx)
+        name = '{}predicted_trip_table_{}.pickle'.format(dir_name, process_idx)
         file = open(os.path.join(os.path.dirname(__file__), 'SimInfo', 'temp', name), 'wb')
         pickle.dump(trip_table, file)
         q.put(process_idx)
@@ -1937,8 +1926,8 @@ if __name__ == '__main__':
     # alpha = -5.392
     # beta = {'intercept': 8.819, 'shape': 3.855, 'scale': 0.989}
 
-    alpha = 0.027327872
-    beta = {'intercept':  327.960607, 'shape': 1, 'scale': 0.4}
+    alpha = 0.015
+    beta = {'intercept': 324.836, 'shape': 0.519, 'scale': 0.724}
 
     pref = [0.5, 0.3, 0.2]  # just for test
     observed_path = [29, 27, 24, 25, 29]  # index starts from 1

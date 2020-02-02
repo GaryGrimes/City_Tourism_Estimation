@@ -14,11 +14,15 @@ import slvr.SimDataProcessing as sim_data
 from SolverUtility_ILS import SolverUtility
 import multiprocessing as mp
 import math
+from matplotlib import rcParams
 import datetime
-import progressbar as pb
 
 plt.rcParams['font.sans-serif'] = ['Times']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
+
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = ['Hiragino Maru Gothic Pro', 'Yu Gothic', 'Meirio', 'Takao', 'IPAexGothic', 'IPAPGothic',
+                               'Noto Sans CJK JP']
 
 
 class Tourist(object):
@@ -88,8 +92,8 @@ def eval_fun(para):
     # start process
 
     for idx, chunk in enumerate(pop):
-        _alpha = list(para[:2])
-        _beta = [5] + list(para[2:])
+        _alpha = list(para[0])
+        _beta = {'intercept': para[1], 'shape': para[2], 'scale': para[3]}
         data_input = {'alpha': _alpha, 'beta': _beta,
                       'phi': phi,
                       'util_matrix': utility_matrix,
@@ -117,7 +121,7 @@ def eval_fun(para):
     return penalty_total  # unit transformed from km to m
 
 
-def eval_fun_null(beta):
+def eval_fun_null(para):
     # todo preference也去掉。重新定义solver.
     # divide population into chunks to initiate multi-processing.
     n_cores = mp.cpu_count()
@@ -131,9 +135,10 @@ def eval_fun_null(beta):
     # start process
 
     for idx, chunk in enumerate(pop):
-        alpha = list(beta[:2])
-        beta = [5] + list(beta[2:])
-        data_input = {'alpha': alpha, 'beta': beta,
+        _alpha = list(para[0])
+        _beta = {'intercept': para[1], 'shape': para[2], 'scale': para[3]}
+
+        data_input = {'alpha': _alpha, 'beta': _beta,
                       'phi': phi,
                       'util_matrix': utility_matrix,
                       'time_matrix': edge_time_matrix,
@@ -160,31 +165,9 @@ def eval_fun_null(beta):
     return penalty_total  # unit transformed from km to m
 
 
-def parse_observed_trips(_agents: list):
-    enmerated_agents = 0
-    observed_trip_table = np.zeros((37, 37), dtype=int)
+def eval_fun_trips(para, _dir_name=''):
+    """Predict trip statistics given model parameters and network properties. Work with TDM strategies as well."""
 
-    for _agent in _agents:
-        # attraction indices in solver start from 0 (in survey start from 1)
-        pref, observed_path = _agent.preference, list(np.array(_agent.path_obs) - 1)
-
-        if pref is None or observed_path is None:
-            continue
-        # skip empty paths (no visited location)
-        if len(observed_path) < 3:
-            continue
-        # parse trip frequency
-        for _idx in range(len(observed_path) - 1):
-            _o, _d = observed_path[_idx], observed_path[_idx + 1]
-            try:
-                observed_trip_table[_o, _d] += 1
-            except IndexError:
-                continue
-        enmerated_agents += 1
-    return enmerated_agents, observed_trip_table
-
-
-def eval_fun_trips(para):
     # divide population into chunks to initiate multi-processing.
     n_cores = mp.cpu_count()
     pop = chunks(agent_database, n_cores)
@@ -197,8 +180,9 @@ def eval_fun_trips(para):
     # start process
 
     for idx, chunk in enumerate(pop):
-        _alpha = list(para[:2])
-        _beta = [5] + list(para[2:])
+        _alpha = para[0]
+        _beta = {'intercept': para[1], 'shape': para[2], 'scale': para[3]}
+
         data_input = {'alpha': _alpha, 'beta': _beta,
                       'phi': phi,
                       'util_matrix': utility_matrix,
@@ -207,7 +191,8 @@ def eval_fun_trips(para):
                       'dwell_matrix': dwell_vector,
                       'dist_matrix': edge_distance_matrix}
 
-        process = mp.Process(target=SolverUtility.solver_trip_stat, args=(penalty_queue, idx, node_num, chunk),
+        process = mp.Process(target=SolverUtility.solver_trip_stat,
+                             args=(penalty_queue, idx, node_num, chunk, _dir_name),
                              kwargs=data_input, name='P{}'.format(idx + 1))
         jobs.append(process)
         process.start()
@@ -223,7 +208,8 @@ def eval_fun_trips(para):
             break
         else:
             cur_idx = penalty_queue.get()
-            name = 'predicted_trip_table_{}.pickle'.format(cur_idx)
+            # Aggregate predicted trips from files in designated directory
+            name = '{}predicted_trip_table_{}.pickle'.format(_dir_name, cur_idx)
             with open(os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp', name),
                       'rb') as file:
                 trip_segment = pickle.load(file)  # note: agent = tourists here
@@ -283,6 +269,39 @@ def eval_fun_util_tuples(para):
     return res_tuples  # unit transformed from km to m
 
 
+# simulation strategies
+def tdm_simulation(_taget_property, _strategy, _target_ODs):
+    stg_type = ['time', 'cost', 'util', 'combined']
+    # example
+    directory_name = _strategy + '/'
+
+    pass
+
+
+def parse_observed_trips(_agents: list):
+    enmerated_agents = 0
+    observed_trip_table = np.zeros((37, 37), dtype=int)
+
+    for _agent in _agents:
+        # attraction indices in solver start from 0 (in survey start from 1)
+        pref, observed_path = _agent.preference, list(np.array(_agent.path_obs) - 1)
+
+        if pref is None or observed_path is None:
+            continue
+        # skip empty paths (no visited location)
+        if len(observed_path) < 3:
+            continue
+        # parse trip frequency
+        for _idx in range(len(observed_path) - 1):
+            _o, _d = observed_path[_idx], observed_path[_idx + 1]
+            try:
+                observed_trip_table[_o, _d] += 1
+            except IndexError:
+                continue
+        enmerated_agents += 1
+    return enmerated_agents, observed_trip_table
+
+
 def parse_pdt_trip(_dir):
     trip_table = np.zeros((37, 37), dtype=int)
     filenames = []
@@ -315,7 +334,7 @@ def parse_pdt_tuples(_dir):
     return res_tuples
 
 
-def scatter_plot(_tuple_list, margin_rate=0.05):
+def plot_util_in_scatter(_tuple_list, margin_rate=0.05):
     """Input: a list of tuples consisting observed and predicted path utilities. Can adjust image margin size."""
     x, y = [], []
     for _ in _tuple_list:
@@ -352,14 +371,67 @@ def scatter_plot(_tuple_list, margin_rate=0.05):
     plt.show()
 
 
+def plot_node_visit(_original_trips, _after_trips):
+    # grouped bar plot see:
+    # https://matplotlib.org/gallery/lines_bars_and_markers/barchart.html#sphx-glr-gallery-lines-bars-and-markers-barchart-py
+
+    node_visits_before = sum(_original_trips)
+
+    visits_sorted_before, idx_sorted = np.sort(node_visits_before)[::-1], np.argsort(node_visits_before)[::-1]
+    place_labels_jp = [place_jp[_] for _ in idx_sorted]
+
+    # todo: when get the node visits after strategies, need to retrieve values according to the sorted indices: idx_sorted
+    node_visits_after = sum(_after_trips)
+    visits_sorted_after = [node_visits_after[_] for _ in idx_sorted]
+
+    x = np.arange(len(place_labels_jp))  # the label locations
+    width = 0.35  # the width of the bars
+
+    fig_wide = 12
+    fig, ax = plt.subplots(figsize=(fig_wide, fig_wide/1.5), dpi=400)
+
+    rects1 = ax.bar(x - width / 2, visits_sorted_before, width, label='Before')
+    rects2 = ax.bar(x + width / 2, visits_sorted_after, width, label='After')
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Visit frequency')
+    ax.set_title('Visit frequency of places (before and after)')
+    ax.set_xticks(x)
+    ax.set_xticklabels(place_labels_jp)
+    ax.legend()
+
+    def autolabel(rects):
+        """Attach a text label above each bar in *rects*, displaying its height."""
+        for rect in rects:
+            height = rect.get_height()
+            ax.annotate('{}'.format(height),
+                        xy=(rect.get_x() + rect.get_width() / 2, height),
+                        xytext=(0, 3),  # 3 points vertical offset
+                        textcoords="offset points",
+                        ha='center', va='bottom')
+
+    # autolabel(rects1)  # display values on bars
+    # autolabel(rects2)
+    plt.xticks(rotation=75)
+    fig.tight_layout()
+
+    plt.grid(True, which='both',axis='y', linestyle="-.")
+    plt.show()
+
+    pass
+
+
 if __name__ == '__main__':
     # Data preparation
+    # %% read place code
+    place_jp = pd.read_excel(os.path.join(os.path.dirname(__file__), 'slvr', 'Database', 'Place_code.xlsx')).name.values
     # %% read tourist agents
     with open(os.path.join(os.path.dirname(__file__), 'slvr', 'Database', 'transit_user_database.pickle'),
               'rb') as file:
         agent_database = pickle.load(file)  # note: agent = tourists here
 
     print('Setting up agents...')
+
     print('Parsing if any agent violates outbound visit...')
     # for agents in agent database, 看observed trip里 o和d有超过47的吗？
     cnt = 0
@@ -392,23 +464,24 @@ if __name__ == '__main__':
 
     # %% evaluation for a single set of parameter
     # numerical gradient using * parameter
-    s = [0, 0, 0, 0]
-    test_flag = input("1. Initiate penalty evaluation test? Any key to procceed 'Enter' to skip.")
+    s = [0.006729682, 393.7222513, 0.859129711, 0.390907255]  # Feb. 2
+
+    test_flag = input("1. Initiate penalty evaluation test? Any key to proceed 'Enter' to skip.")
     if test_flag:
         test_obj = eval_fun(s)
         print('Test penalty for beta* :', test_obj)
-    # todo null case的话把preference也去掉, 即 node utility之和只= sum(U_ik)
     # %% statistics of interest
     enumerated_usrs, obs_trip_table = parse_observed_trips(agent_database)
 
     # observed trip tables 要不要scaled to the whole population's size?
     write_flag = 0
     if write_flag:
-        pd.DataFrame(obs_trip_table).to_excel('Observed trip frequency (PT only).xlsx')
+        pd.DataFrame(obs_trip_table).to_excel(
+            'Project Database/Simulation Statistics/Observed trip frequency (PT only).xlsx')
 
     # predicted trip tables
-    s_opt = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
-    s_null = [0, 0, 0, 0]
+    s_opt = [0.006729682, 393.7222513, 0.859129711, 0.390907255]
+    s_null = [0, s_opt[1], 0, 0]
 
     if input('2. Evaluate predicted trip table given current optimal set of parameters? Enter to skip.'):
         predicted_trip_tables = eval_fun_trips(s_opt)
@@ -416,46 +489,75 @@ if __name__ == '__main__':
         trip_temp_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp')
         predicted_trip_tables = parse_pdt_trip(trip_temp_dir)
 
+    write_flag = 0
+    today = datetime.date.today().strftime('%m_%d')
+    filename = 'Predicted trip table {}.xlsx'.format(today)
+    if write_flag:
+        pd.DataFrame(predicted_trip_tables).to_excel(
+            'Evaluation result/TDM simulation/{}'.format(filename))
+
+
     error_trip_table = predicted_trip_tables - obs_trip_table
     error_trip_percentage = (predicted_trip_tables - obs_trip_table) / obs_trip_table
+
+    original_trip_tables = predicted_trip_tables.copy()
     # %% Error between the utilities of observed trip and predicted trip, for each tourist using PT
-    # todo 比较两个trip table的相对偏差，+-量
-    if input('3. Evaluate utility tuples of observed and predicted trips? Enter to skip, any key to proceed.'):
-        to_plot_tuples = eval_fun_util_tuples(s_opt)
-    else:
-        tuple_temp_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp', 'scatter plot')
-        to_plot_tuples = parse_pdt_tuples(tuple_temp_dir)
-
-    # scatter plot
-    scatter_plot(to_plot_tuples)
-
+    # if input('3. Evaluate utility tuples of observed and predicted trips? Enter to skip, any key to proceed.'):
+    #     to_plot_tuples = eval_fun_util_tuples(s_opt)
+    # else:
+    #     tuple_temp_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp', 'scatter plot')
+    #     to_plot_tuples = parse_pdt_tuples(tuple_temp_dir)
     #
-    if input('4. Evaluate utility tuples of observed and predicted for the null case?'):
-        to_plot_tuples_null = eval_fun_util_tuples(s_null)
-        # scatter plot
-        scatter_plot(to_plot_tuples_null)
-    else:
-        pass
+    # # scatter plot
+    # scatter_plot(to_plot_tuples)
+    #
+    # #
+    # if input('4. Evaluate utility tuples of observed and predicted for the null case?'):
+    #     to_plot_tuples_null = eval_fun_util_tuples(s_null)
+    #     # scatter plot
+    #     scatter_plot(to_plot_tuples_null)
+    # else:
+    #     pass
 
     # %% histogram of total visited attractions
-    visited_cnt = []
-    for _ in agent_database:
-        visited_cnt.append(len(_.path_obs) - 2)
+    if input('Plot histogram of total visited attractions?'):
+        visited_cnt = []
+        for _ in agent_database:
+            visited_cnt.append(len(_.path_obs) - 2)
 
-    #  matplotlib.axes.Axes.hist() 方法的接口
-    # bins_range = np.array([_ for _ in range(max(visited_cnt) + 2)])
+        #  matplotlib.axes.Axes.hist() 方法的接口
+        # bins_range = np.array([_ for _ in range(max(visited_cnt) + 2)])
 
-    bins_range = np.arange(0, max(visited_cnt) + 1.5) - 0.5
+        bins_range = np.arange(0, max(visited_cnt) + 1.5) - 0.5
 
-    fig, ax = plt.subplots(dpi=200)
-    n, bins, patches = ax.hist(x=visited_cnt, bins=bins_range, color='#0504aa',
-                               alpha=0.6, rwidth=0.85)
-    plt.grid(axis='y', alpha=0.75)
-    plt.xlabel('Places visited')
-    plt.ylabel('Frequency')
-    plt.title('An histogram of total places visited')
+        fig, ax = plt.subplots(dpi=200)
+        n, bins, patches = ax.hist(x=visited_cnt, bins=bins_range, color='#0504aa',
+                                   alpha=0.6, rwidth=0.85)
+        plt.grid(axis='y', alpha=0.75)
+        plt.xlabel('Places visited')
+        plt.ylabel('Frequency')
+        plt.title('An histogram of total places visited')
 
-    plt.show()
+        plt.show()
     # maxfreq = n.max()
     # # 设置y轴的上限
     # plt.ylim(ymax=np.ceil(maxfreq / 10) * 10 if maxfreq % 10 else maxfreq + 10)
+    # %% simulation of TDM strategies
+
+    # travel time
+    strategy_type = 'time'
+    targets = []  # [(29, 24), (31,33)]
+    effects = []
+
+    # tdm_trips = eval_fun_trips(s_opt, _dir_name='time/')
+
+    # %% result and indicators
+    """1. trip tables (after strategy) 2. effects in ratio (referring to the original trip statistics 
+    3. attraction visit distribution"""
+
+    # methods for plot attraction visits finished
+
+    # todo: trip statistics before and after applying strategies
+    # todo: compare predicted_trip_tables (after applying strategy) and original_trip_tables
+    per_trip_change = predicted_trip_tables / original_trip_tables
+

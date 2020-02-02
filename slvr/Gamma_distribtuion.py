@@ -22,7 +22,12 @@ xmin, xmax = 0, 4
 x = np.linspace(xmin, xmax, 200)
 
 # k, theta = [1.0, 2, 3, 5., 9., 7.5, 0.5], [2.0, 2., 2., 1., 0.5, 1., 1.]
-k, theta = [1, 0.5, 0.1, 0.5, 2], [0.4, 0.8, 5, 0.6, 0.2]
+"""Values of shape and scale given as initial grid points in grid search"""
+# range_shape = [0.1, 0.5, 1, 2, 5, 7]
+# range_scale = [0.2, 0.4, 0.6, 0.8, 1, 2, 5]
+
+# k, theta = [0.1, 0.1, 0.1, 0.5, 0.859129711], [0.2, 0.4, 0.6, 0.2, 0.390907255]
+k, theta = [-1.140870289], [0.390907255]
 
 lines = []
 
@@ -39,6 +44,7 @@ plt.legend()
 plt.title('The discount factor function')
 plt.show()
 
+# %%
 k, theta = [0.1, 1, 3, 5, 9], [0.1, 0.3, 10, 5, 10]
 lines = []
 

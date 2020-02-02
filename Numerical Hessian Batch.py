@@ -143,6 +143,7 @@ def eval_fun_null(s):  # s is a single set of parameters, not species
 
 
 def eval_fun_norm(s):
+    global res_null
     # penalty in null case
 
     # divide population into chunks to initiate multi-processing.
@@ -157,9 +158,11 @@ def eval_fun_norm(s):
     # start process
 
     for idx, chunk in enumerate(pop):
-        alpha = list(s[:2])
-        # 5 was replaced by a larger value of 100
-        beta = [100] + list(s[2:])
+        alpha = s[0]
+        # 5 was replaced by a larger value of 100!!!
+
+        beta = {'intercept': s[1], 'shape': s[2], 'scale': s[3]}
+
         data_input = {'alpha': alpha, 'beta': beta,
                       'phi': phi,
                       'util_matrix': utility_matrix,
@@ -185,7 +188,7 @@ def eval_fun_norm(s):
         else:
             penalty_total += penalty_queue.get()[1]  # 0是index，1才是data
 
-    pnty_null = 22112.89
+    pnty_null = res_null
     pnty_normed = max((pnty_null - penalty_total) / pnty_null, 0)
     return pnty_normed  # unit transformed from km to m
 
@@ -213,6 +216,8 @@ def eval_fun_norm(s):
 # ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap="rainbow")
 # # 展示
 # plt.show()
+
+res_null = None
 
 if __name__ == '__main__':
 
@@ -290,22 +295,35 @@ if __name__ == '__main__':
     # %% Numerical Hessian using nmdf tools with beta *
 
     # numerical gradient using * parameter
-    s = [-1.286284872, -0.286449175, 0.691566901, 0.353739632]
+    s = [0.006729682, 393.7222513, 0.859129711, 0.390907255]  # Feb. 2
+    s1 = [0.008162314, 392.3767281, 0.933196936, 0.348740611
+]
 
     # current near optimal after grid search (Jan. 9)
-    near_optimal = [0.03, 300, 0.1, 0.2]
-    NULL = [0, 300, 0, 0]
+    near_optimal = [0.027327872, 327.960607, 1, 0.4]
+    NULL = [0, s[1], 0, 0]
+
+    print('Remember to check weight in path penalty function.')
 
     # calculate evaluation time
-    if input('Evaluate the grid search near optimal?'):
+    if input('Evaluate the current optimal?'):
         start_time = datetime.datetime.now()
-        res = eval_fun(near_optimal)
+        res = eval_fun(s)
+        print('Penalty for current optimal: {}'.format(res))
+        end_time = datetime.datetime.now()
+        print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
+        print('Evaluated penalty: %.2f' % res)
+
+    # calculate evaluation time
+    if input('Evaluate the near optimal?'):
+        start_time = datetime.datetime.now()
+        res = eval_fun(s1)
         print('Penalty for near optimal: {}'.format(res))
         end_time = datetime.datetime.now()
         print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
-        print('Evaluated penalty: %.2f, grid search penalty %.2f' % (res, 11073.29102))
+        print('Evaluated penalty: %.2f' % res)
 
-    # calculate evaluation time
+    # %% calculate evaluation time
 
     if input('Evaluate the null case?'):
         start_time = datetime.datetime.now()
@@ -314,16 +332,15 @@ if __name__ == '__main__':
         end_time = datetime.datetime.now()
         print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))
 
-
-
-
     # %% numerical hessian and gradients
+    current_optimal = s
 
     # res_Grad = nd.Gradient(eval_fun)(s)
-    # res_Hessian = nd.Hessian(eval_fun_norm)(current_optimal)
-    # print('Numerical Hessian at {}, with value: {}'.format(current_optimal, res_Hessian))
-    #
-    # variance = np.linalg.inv(-res_Hessian)
-    # std_err = np.sqrt(np.diag(variance))
-    #
-    # print('t value: {}'.format(np.array(current_optimal) / std_err))
+    if input('Evaluate Hessian and pseudo t statistics?'):
+        res_Hessian = nd.Hessian(eval_fun_norm)(current_optimal)
+        print('Numerical Hessian at {}, with value: {}'.format(current_optimal, res_Hessian))
+
+        variance = np.linalg.inv(-res_Hessian)
+        std_err = np.sqrt(np.diag(variance))
+
+        print('t value: {}'.format(np.array(current_optimal) / std_err))
