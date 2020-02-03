@@ -189,7 +189,9 @@ class SolverUtility(object):
 
             best_path_predicted, lowest_penalty = [], float('inf')
             for _path in selected_path:
+                # res = Solver_ILS.path_penalty(path_obs, _path)
                 res = Solver_ILS.path_penalty(path_obs, _path)
+
                 if not best_path_predicted:
                     best_path_predicted, lowest_penalty = _path, res
                 if res < lowest_penalty:
@@ -380,7 +382,10 @@ class SolverUtility(object):
 
             best_path_predicted, lowest_penalty = [], float('inf')
             for _path in selected_path:
+                """Feb.2 changed to geo dist penalty function
+                    Feb.3 switched back. No better results from geo dist."""
                 res = Solver_ILS.path_penalty(path_obs, _path)
+
                 if not best_path_predicted:
                     best_path_predicted, lowest_penalty = _path, res
                 if res < lowest_penalty:
@@ -586,7 +591,6 @@ class SolverUtility(object):
                     best_path_predicted, lowest_penalty = _path, res
                 if res < lowest_penalty:
                     best_path_predicted, lowest_penalty = _path, res
-
 
             # WRITE PREDICTED PATH AND PENALTY
 

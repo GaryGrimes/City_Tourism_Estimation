@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from slvr.SolverUtility_ILS import SolverUtility
 import multiprocessing as mp
 import slvr.SimDataProcessing as sim_data
+import csv
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
@@ -56,7 +57,7 @@ def score2penalty(*args):
 
 
 def evaluation(_s, _itr):
-    """Evaluation of each population using MultiProcessing. Results are returned to the mp.queue in form of tuples."""
+    """Evaluation of each population using MultiProcessing. Results are returned to the mp.queue in tuples."""
     global PARAMETER
     global memo_parameter, memo_penalty
     global phi, utility_matrix, dwell_vector, edge_time_matrix, edge_cost_matrix, edge_distance_matrix
@@ -72,7 +73,12 @@ def evaluation(_s, _itr):
     # evaluation with MultiProcessing for each parameter in current generation
     for idx, parameter in enumerate(_s):
         print('\nStarting process {} in {}'.format(idx + 1, len(_s)))
-        parameter = parameter.tolist()  # convert to list
+        # convert ndarray to list
+        try:
+            parameter = parameter.tolist()  # convert to list
+        except AttributeError:
+            pass
+
         # check existence of parameter in memory
         if parameter in memo_parameter:
             # sent back penalty tuple if exists in history
@@ -80,8 +86,10 @@ def evaluation(_s, _itr):
             print('\nThe {}th parameter is sent from history (with index {}), with score: {}'.format(
                 idx, memo_parameter.index(parameter), memo_penalty[memo_parameter.index(parameter)]))
         else:
-            ALPHA = list(parameter[:2])
-            BETA = [5] + list(parameter[2:])
+            # with gamma utility function
+            ALPHA = parameter[0]
+            BETA = {'intercept': parameter[1], 'shape': parameter[2], 'scale': parameter[3]}
+
             data_input = {'alpha': ALPHA, 'beta': BETA,
                           'phi': phi,
                           'util_matrix': utility_matrix,
@@ -120,8 +128,14 @@ def evaluation(_s, _itr):
                 para_penalties.append(_tuple[1])  # Caution! 目前传回的tuple[1]是一个dict!!!
                 break
 
-    memo_parameter.extend(_s.tolist())
-    memo_penalty.extend(para_penalties)
+    """parameter memoizer disabled"""
+
+    # try:
+    #     memo_parameter.extend(_s.tolist())
+    # except AttributeError:
+    #     memo_parameter.extend(_s)
+    #
+    # memo_penalty.extend(para_penalties)
 
     PARAMETER[_itr] = _s  # save parameters of each iteration into the PARAMETER dict.
 
@@ -130,7 +144,7 @@ def evaluation(_s, _itr):
     # print evaluation scores
     print('Evaluation scores for iteration {}:'.format(_itr))
     for _i, _ in enumerate(scores):
-        print('Parameter %d: a1: %.3f, a2: %.3f; b2: %.3f, b3: %.3f, with score: %.3e'
+        print('Parameter %d: a1: %.3f, b1: %.3f; k: %.3f, theta: %.3f, with score: %.3e'
               % (_i + 1, _s[_i][0], _s[_i][1], _s[_i][2], _s[_i][3], _))
     return scores
 
@@ -293,7 +307,7 @@ if __name__ == '__main__':
 
     # 'Evolution Strategy' parameter setup
     DNA_SIZE = 4  # DNA (real number)
-    DNA_BOUND = [[-10, 0], [-10, 0], [0, 10], [0, 10]]  # solution upper and lower bounds
+    DNA_BOUND = [[0, 0.1], [0, 700], [0, 7], [0, 3]]  # solution upper and lower bounds
     N_GENERATIONS = 200
     POP_SIZE = 12  # population size (each individual in current generation is a vector of behavioral parameters)
     N_KID = 12  # n kids per generation
@@ -308,25 +322,29 @@ if __name__ == '__main__':
     # parameter = [-0.05, -0.05, 0.03, 0.1]
     # s = [[]]  # todo initialize s with good results in initialization evaluation
 
-    initial_eval_filename = 'Initialization objective values ILS_PF_LD.xlsx'
+    initial_eval_filename = 'Initialization values final 01_29.xlsx'  # generated on Jan. 10
+
     initial_eval_res = pd.read_excel(
         os.path.join(os.path.dirname(__file__), 'Evaluation result', initial_eval_filename), index_col=0)
 
     # sort values by penalty
-    temp_df = initial_eval_res.sort_values(by=['penalty'])
-    s = temp_df.loc[:, 'a1':'b3'].values[:(POP_SIZE - 2)]
+    temp_df = initial_eval_res.sort_values(by=['penalty'])  # from small to large
+    s = temp_df.loc[:, 'a1':'scale'].values[:POP_SIZE]
 
-    # alpha1 and alpha2 should have negative values!
-    s[:, :2] = -s[:, :2]
     s = s.tolist()
 
-    for i in range(POP_SIZE - len(s)):  # to fill in s
-        # random alphas
-        a1, a2 = np.random.uniform(-0.5, -0.01), np.random.uniform(-0.5, -0.01)
-        # random betas
-        b2, b3 = np.random.uniform(0.01, 0.3), np.random.uniform(0.02, 1)
-        s.append([a1, a2, b2, b3])
+    # %% initiate log files (paras and itrs)
+    # save intermediate results into csv file after each iteration
 
+    filename_itrres = '{} iteration result.csv'.format(os.path.basename(__file__).split('.')[0])
+    with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', 'EvoStrategy', filename_itrres),
+              'w', newline='') as csvFile:  # 去掉每行后面的空格
+        fileHeader = ['itr', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score', 'record_penalty', 'record',
+                      'gnr_mean']
+        writer = csv.writer(csvFile)
+        writer.writerow(fileHeader)
+
+    # %% start optimal search
     mut_strength = [[0.2 * _ * np.random.rand() for _ in j] for j in s]  # 1/5 the DNA value
 
     POP = dict(DNA=np.array(s),  # initialize the pop DNA values
@@ -348,6 +366,18 @@ if __name__ == '__main__':
         y_max.append(para_record)
         x_max.append(POP['DNA'][SCORES.argsort()][-1])  # pick the last one with highest score. x_max
         # print evaluation scores
+
+        """write iteration results"""
+
+        with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', 'EvoStrategy', filename_itrres),
+                  'a', newline='') as csvFile:
+            iteration_penalty, record_penalty = score2penalty(Best_score)[0], score2penalty(para_record)[0]
+            add_info = [iteration] + s[np.argsort(SCORES)[-1]] + [iteration_penalty] + [Best_score] + [
+                record_penalty], [para_record] + [np.mean(SCORES)]
+            writer = csv.writer(csvFile)
+            writer.writerow(add_info)
+
+        # todo: parameters 也可以用csv的方式写。 每一行会有一个空格，所以并不干扰
 
         # %% plot
         if iteration > 20:

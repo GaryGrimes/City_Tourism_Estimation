@@ -94,6 +94,11 @@ def fit_logit(func):
     initialParameters = np.array([1.0, 1.0, 1.0])
     # curve fit the test data, ignoring warning due to initial parameter estimates
     warnings.filterwarnings("ignore")
+    # in case shape or scale gets negative value
+    if np.isnan(x).any() or np.isnan(y).any() or np.isinf(x).any() or np.isinf(y).any():
+        x = np.nan_to_num(x)
+        y = np.array([1] * len(x))  # y will be 1 instead, meaning no discount factor
+
     try:
         fit_params, pcov = curve_fit(func, x, y, initialParameters)
     except RuntimeError:

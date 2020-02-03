@@ -73,8 +73,9 @@ if __name__ == '__main__':
 
     print('Setting up agents...')
 
+    """Test geo distance penalty function """
     today = datetime.date.today().strftime('%m_%d')
-    filename = 'Initialization values final {}.csv'.format(today)
+    filename = 'Initialization values GeoDist {}.csv'.format(today)
 
     with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', filename),
               'w', newline='') as csvFile:  # 去掉每行后面的空格
@@ -153,7 +154,8 @@ if __name__ == '__main__':
 
         try:
             pg_curr = pg_total - len(Population) + core_process
-            progress.update(int(pg_curr / (pg_total - 1)) * 100)
+            cur_progress = int(pg_curr / (pg_total - 1)) * 100
+            progress.update(cur_progress)
         except:
             pass
 

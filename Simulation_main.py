@@ -92,7 +92,7 @@ def eval_fun(para):
     # start process
 
     for idx, chunk in enumerate(pop):
-        _alpha = list(para[0])
+        _alpha = para[0]
         _beta = {'intercept': para[1], 'shape': para[2], 'scale': para[3]}
         data_input = {'alpha': _alpha, 'beta': _beta,
                       'phi': phi,
@@ -135,7 +135,7 @@ def eval_fun_null(para):
     # start process
 
     for idx, chunk in enumerate(pop):
-        _alpha = list(para[0])
+        _alpha = para[0]
         _beta = {'intercept': para[1], 'shape': para[2], 'scale': para[3]}
 
         data_input = {'alpha': _alpha, 'beta': _beta,
@@ -388,7 +388,7 @@ def plot_node_visit(_original_trips, _after_trips):
     width = 0.35  # the width of the bars
 
     fig_wide = 12
-    fig, ax = plt.subplots(figsize=(fig_wide, fig_wide/1.5), dpi=400)
+    fig, ax = plt.subplots(figsize=(fig_wide, fig_wide / 1.5), dpi=400)
 
     rects1 = ax.bar(x - width / 2, visits_sorted_before, width, label='Before')
     rects2 = ax.bar(x + width / 2, visits_sorted_after, width, label='After')
@@ -415,7 +415,7 @@ def plot_node_visit(_original_trips, _after_trips):
     plt.xticks(rotation=75)
     fig.tight_layout()
 
-    plt.grid(True, which='both',axis='y', linestyle="-.")
+    plt.grid(True, which='both', axis='y', linestyle="-.")
     plt.show()
 
     pass
@@ -464,7 +464,8 @@ if __name__ == '__main__':
 
     # %% evaluation for a single set of parameter
     # numerical gradient using * parameter
-    s = [0.006729682, 393.7222513, 0.859129711, 0.390907255]  # Feb. 2
+
+    s = [0.032579037, 318.4565499, 0.1, 0.2]  # Feb. 2
 
     test_flag = input("1. Initiate penalty evaluation test? Any key to proceed 'Enter' to skip.")
     if test_flag:
@@ -480,7 +481,7 @@ if __name__ == '__main__':
             'Project Database/Simulation Statistics/Observed trip frequency (PT only).xlsx')
 
     # predicted trip tables
-    s_opt = [0.006729682, 393.7222513, 0.859129711, 0.390907255]
+    s_opt = [0.032579037, 318.4565499, 0.1, 0.2]
     s_null = [0, s_opt[1], 0, 0]
 
     if input('2. Evaluate predicted trip table given current optimal set of parameters? Enter to skip.'):
@@ -495,7 +496,6 @@ if __name__ == '__main__':
     if write_flag:
         pd.DataFrame(predicted_trip_tables).to_excel(
             'Evaluation result/TDM simulation/{}'.format(filename))
-
 
     error_trip_table = predicted_trip_tables - obs_trip_table
     error_trip_percentage = (predicted_trip_tables - obs_trip_table) / obs_trip_table
@@ -519,8 +519,74 @@ if __name__ == '__main__':
     # else:
     #     pass
 
+    # maxfreq = n.max()
+    # # 设置y轴的上限
+    # plt.ylim(ymax=np.ceil(maxfreq / 10) * 10 if maxfreq % 10 else maxfreq + 10)
+    # %% simulation of TDM strategies
+    """ 
+    Scenario 1: travel impedance. 
+    Strategies: a. reduce waiting time by increasing operation frequency (reduce cabin congestion as well); 
+                b. introduce new or alternative lines
+                c. reducing transit fare (same effect of travel time)
+                
+    Targets: congestion
+             1. “Sanjusangen-do Temple” to “Gion”, 28-24
+             2. “Ginkakuji area” to “Arashiyama region”,  15-23
+             3. “Kyoto station area” to “Kiyomizu Temple area”,  29-27
+             cabin
+             4. “Arashiyama region” to “Gion”,  23-24
+             frequency
+             5. “Ginkakuji area” to “Gion” , 6-24
+             6. “Kyoto station area” to “Sanjusangen-do Temple”, 29-28
+             fare:
+             7. “Sagano Region” to “Kawaramachi area”,  14-25
+    
+    Empirical targets:
+            1. Kyoto station to 高雄 , to 京北
+            2. improve travel time of edges between 15, 16, 17, 24, 27 
+    """
+    # travel time
+    strategy_type = 'time'
+    targets = [(27, 23), (14, 22), (28, 26)]  # [(29, 24), (31,33)]
+    effects = [0.2, 0.2, 0.2]  # reduce 20% of the travel time  range(0.2, 0.3, 0.5)
+
+    for idx, _ in enumerate(targets):
+        print('Target {} for travel time scenarios: {} to {}'.format(idx + 1, place_jp[_[0]], place_jp[_[1]]))
+        print('travel_time_before is {:.3f} min(s)'.format(edge_time_matrix[_]))
+
+        # todo: modify travel time, for both the back and forth tuples, e.g. (27, 23) and (23, 27)
+        # todo: tdm_trips = eval_fun_trips(s_opt, _dir_name='time/')
+
+    # %%
+    """ 
+    Scenario 2: node attractiveness. 
+    Strategies: increase attractiveness by introducing investment
+    
+    Targets: 1. “Sanjusangen-do Temple” to “Gion”, 28-24
+             2. “Ginkakuji area” to “Arashiyama region”,  15-23
+             3. “Kyoto station area” to “Kiyomizu Temple area”.  29-27
+    Empirical: 
+              a. 1, 2, 35, 36, 37 (distant areas)
+              b. 20, 21; 18, 17  (near Shijo Kawaramachi)
+              c. 19, 22, 26, 30 ( near Arashiyama, package sites)
+              d. 31, 32  (
+
+            
+    """
+
+
+    # %% result and indicators
+    """1. trip tables (after strategy) 2. effects in ratio (referring to the original trip statistics 
+    3. attraction visit distribution"""
+
+    # methods for plot attraction visits finished
+
+    # todo: trip statistics before and after applying strategies
+    # todo: compare predicted_trip_tables (after applying strategy) and original_trip_tables
+    per_trip_change = predicted_trip_tables / original_trip_tables
+
     # %% histogram of total visited attractions
-    if input('Plot histogram of total visited attractions?'):
+    if input('\nPlot histogram of total visited attractions?'):
         visited_cnt = []
         for _ in agent_database:
             visited_cnt.append(len(_.path_obs) - 2)
@@ -539,25 +605,3 @@ if __name__ == '__main__':
         plt.title('An histogram of total places visited')
 
         plt.show()
-    # maxfreq = n.max()
-    # # 设置y轴的上限
-    # plt.ylim(ymax=np.ceil(maxfreq / 10) * 10 if maxfreq % 10 else maxfreq + 10)
-    # %% simulation of TDM strategies
-
-    # travel time
-    strategy_type = 'time'
-    targets = []  # [(29, 24), (31,33)]
-    effects = []
-
-    # tdm_trips = eval_fun_trips(s_opt, _dir_name='time/')
-
-    # %% result and indicators
-    """1. trip tables (after strategy) 2. effects in ratio (referring to the original trip statistics 
-    3. attraction visit distribution"""
-
-    # methods for plot attraction visits finished
-
-    # todo: trip statistics before and after applying strategies
-    # todo: compare predicted_trip_tables (after applying strategy) and original_trip_tables
-    per_trip_change = predicted_trip_tables / original_trip_tables
-

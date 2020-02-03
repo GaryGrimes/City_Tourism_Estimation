@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from slvr.SolverUtility_ILS import SolverUtility
 import multiprocessing as mp
 import slvr.SimDataProcessing as sim_data
+import csv
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
@@ -332,7 +333,7 @@ if __name__ == '__main__':
 
     # sort values by penalty
     temp_df = initial_eval_res.sort_values(by=['penalty'])
-    s = temp_df.loc[:, 'a1':'scale'].values[:(inn)]
+    s = temp_df.loc[:, 'a1':'scale'].values[:inn]
 
     # define mutation bounds for the parameters
     # bounds = np.array([max(abs(s[:, _])) for _ in range(s.shape[1])])
@@ -340,7 +341,18 @@ if __name__ == '__main__':
 
     s = s.tolist()
 
-    # start iterations
+    # %% initiate log files (paras and itrs)
+    # save intermediate results into csv file after each iteration
+
+    filename_itrres = '{} iteration result.csv'.format(os.path.basename(__file__).split('.')[0])
+    with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', 'RandomGA', filename_itrres),
+              'w', newline='') as csvFile:  # 去掉每行后面的空格
+        fileHeader = ['itr', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score', 'record_penalty', 'record',
+                      'gnr_mean']
+        writer = csv.writer(csvFile)
+        writer.writerow(fileHeader)
+
+    # %% start iterations
     para_record = float('-inf')
     for iteration in range(itr_max):
         # evaluation
@@ -354,7 +366,6 @@ if __name__ == '__main__':
         SCORES = list(SCORES[_] for _ in Indices)  # s and SCORES should have same dimension
 
         Best_score = max(SCORES)
-
         para_record = max(Best_score, para_record)  # duplicate 'record' use in the optimal solver module
 
         # write generation record and scores
@@ -367,13 +378,23 @@ if __name__ == '__main__':
         s = mutation_new(prob_mut, para_record, s, SCORES,
                          boundaries=bounds)  # mutation generates (inn + insertion size) individuals
 
-        print('\nMutated parameters(individuals) for iteration {}: '.format(iteration + 1))
-        for i in range(len(s)):
-            print('Parameter %d: a1: %.3f, b1: %.3f; k: %.3f, theta: %.3f\n' % (i + 1, s[i][0],
-                                                                                s[i][1],
-                                                                                s[i][2],
-                                                                                s[i][3],
-                                                                                ))
+        """write iteration results"""
+
+        with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', 'RandomGA', filename_itrres),
+                  'a', newline='') as csvFile:
+            iteration_penalty, record_penalty = score2penalty(Best_score)[0], score2penalty(para_record)[0]
+            add_info = [iteration] + s[np.argsort(SCORES)[-1]] + [iteration_penalty] + [Best_score] + [
+                record_penalty], [para_record] + [np.mean(SCORES)]
+            writer = csv.writer(csvFile)
+            writer.writerow(add_info)
+
+        # print('\nMutated parameters(individuals) for iteration {}: '.format(iteration + 1))
+        # for i in range(len(s)):
+        #     print('Parameter %d: a1: %.3f, b1: %.3f; k: %.3f, theta: %.3f\n' % (i + 1, s[i][0],
+        #                                                                         s[i][1],
+        #                                                                         s[i][2],
+        #                                                                         s[i][3],
+        #                                                                         ))
         # %% plot
         if iteration > 20:
             try:
@@ -394,7 +415,8 @@ if __name__ == '__main__':
 
     # %% save results into DF
     Res = pd.DataFrame(
-        columns=['itr', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score', 'record_penalty', 'record', 'gnr_mean'])
+        columns=['itr', 'a1', 'intercept', 'shape', 'scale', 'penalty', 'score', 'record_penalty', 'record',
+                 'gnr_mean'])
     Res['itr'] = range(itr_max)
     Res.loc[:, 'a1':'scale'] = x_max
     Res['score'] = gnr_max

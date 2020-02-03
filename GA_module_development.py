@@ -121,7 +121,7 @@ def value_mutation(cur_value, error, bound):
 
 
 inn = 20
-itr_max = 300
+itr_max = 1000
 prob_mut = 0.8  # parameter update probability
 
 s = []  # species
