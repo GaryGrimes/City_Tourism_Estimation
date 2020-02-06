@@ -412,7 +412,7 @@ class SolverUtility(object):
         q.put((process_idx, data['penalty']))
 
     @staticmethod
-    def solver_trip_stat(q, process_idx, node_num, agent_database, dir_name, **kwargs):
+    def solver_trip_stat(q, process_idx, node_num, agent_database, dir_name, suf_name, **kwargs):
         """ Predict tours and generate trip frequency table for a single set of parameters. """
 
         # Levenshtein distance, with path threshold filter
@@ -430,6 +430,8 @@ class SolverUtility(object):
         # save results for all agents
         _penalty, _pdt_path, _obs_path = [], [], []
         #  trip_table 变量， 并在sent to queue的时候折叠为array (using .flatten()), customer side use reshape([37, 37])
+
+        # initiate statistics to output
         trip_table = np.zeros((37, 37), dtype=int)
 
         # enumerate each tourist
@@ -607,10 +609,16 @@ class SolverUtility(object):
                     continue
 
         # if oversize (capacity limit) encountered, try dump the results by pickle and read again
-        name = '{}predicted_trip_table_{}.pickle'.format(dir_name, process_idx)
-        file = open(os.path.join(os.path.dirname(__file__), 'SimInfo', 'temp', name), 'wb')
+        """dumping trip matrix"""
+        name = 'predicted_trip_table{}_{}.pickle'.format(suf_name, process_idx)
+        file = open(os.path.join(dir_name, name), 'wb')
         pickle.dump(trip_table, file)
-        q.put(process_idx)
+
+        name2 = 'trip_chain{}_{}.pickle'.format(suf_name, process_idx)
+        file2 = open(os.path.join(dir_name, name2), 'wb')
+        pickle.dump(_pdt_path, file2)
+
+        q.put(process_idx)  # should depreciate
 
     @staticmethod
     def solver_util_scatter(q, process_idx, node_num, agent_database, **kwargs):
