@@ -27,21 +27,22 @@ x = np.linspace(xmin, xmax, 200)
 # range_scale = [0.2, 0.4, 0.6, 0.8, 1, 2, 5]
 
 # k, theta = [0.1, 0.1, 0.1, 0.5, 0.859129711], [0.2, 0.4, 0.6, 0.2, 0.390907255]
-k, theta = [-1.140870289], [0.390907255]
+k, theta = [0.859], [0.391]
 
 lines = []
 
 plt.figure(dpi=150)
 for i in zip(k, theta):
-    y = 1 - gamma.cdf(x, a=i[0], scale=i[1])
-    plt.plot(x, y, label=(r'$k={}, \theta={:.2f}$'.format(i[0], 1 / i[1])))
+    y = 393.7 * (1 - gamma.cdf(x, a=i[0], scale=i[1]))
+    plt.plot(x, y, label=(r'$k={}, \theta={:.2f}$'.format(i[0], i[1])))
 
 plt.xlim([xmin, xmax])
 plt.xlabel('Accumulated utiltiy (X)')
-plt.ylim([0, 1])
-plt.ylabel(r'$y=1-F(X; k, \theta)$')
+plt.ylim([0, 393.7])
+plt.ylabel("Utility for the k'th visit")
+# plt.ylabel(r'$y=1-F(X; k, \theta)$')
 plt.legend()
-plt.title('The discount factor function')
+plt.title('The diminishing marginal utility')
 plt.show()
 
 # %%

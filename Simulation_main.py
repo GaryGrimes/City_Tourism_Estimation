@@ -19,6 +19,7 @@ import datetime
 import matplotlib.ticker
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter,
                                AutoMinorLocator)
+import Sankey as sk
 
 plt.rcParams['font.sans-serif'] = ['Times']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
@@ -68,12 +69,12 @@ class StrategyNode(object):
     strategy_cnt, strategy_idx = 0, 1
 
     def __init__(self, s_type, strategy: dict):
-        self.idx = StrategyEdge.strategy_idx
+        self.idx = StrategyNode.strategy_idx
         self.suffix = '_node_' + str(self.idx)
         self.type, self.strategy = s_type, strategy
 
-        StrategyEdge.strategy_cnt += 1
-        StrategyEdge.strategy_idx += 1
+        StrategyNode.strategy_cnt += 1
+        StrategyNode.strategy_idx += 1
 
 
 def walklevel(some_dir, level=1):
@@ -347,6 +348,45 @@ def eval_fun_trips(para, _dir='', _suf=''):
     # retrieve parameter penalties from queue
 
 
+def eval_fun_trips_null(para, _dir='', _suf=''):
+    """Predict trip statistics given model parameters and network properties. Work with TDM strategies as well."""
+
+    # divide population into chunks to initiate multi-processing.
+    n_cores = mp.cpu_count()
+    pop = chunks(agent_database, n_cores)
+    # for i in pop:
+    #     print(len(i))  # 尽可能平均
+
+    jobs = []
+    penalty_queue = mp.Queue()  # queue, to save results for multi_processing
+
+    # start process
+
+    for idx, chunk in enumerate(pop):
+        _alpha = para[0]
+        _beta = {'intercept': para[1], 'shape': para[2], 'scale': para[3]}
+
+        data_input = {'alpha': _alpha, 'beta': _beta,
+                      'phi': phi,
+                      'util_matrix': utility_matrix,
+                      'time_matrix': edge_time_matrix,
+                      'cost_matrix': edge_cost_matrix,
+                      'dwell_matrix': dwell_vector,
+                      'dist_matrix': edge_distance_matrix}
+        # todo: send _dir and _suf into process, to dump trip matrix and travel patterns
+        process = mp.Process(target=SolverUtility.solver_trip_stat_null,
+                             args=(penalty_queue, idx, node_num, chunk, _dir, _suf),
+                             kwargs=data_input, name='P{}'.format(idx + 1))
+        jobs.append(process)
+        process.start()
+
+    for j in jobs:
+        # wait for processes to complete and join them
+        j.join()
+    print('Jobs successfully joined.')
+    # retrieve parameter penalties from queue
+
+
 def parse_observed_trips(_agents: list):
     enmerated_agents = 0
     observed_trip_table = np.zeros((37, 37), dtype=int)
@@ -490,10 +530,79 @@ def compare_node_visit(_obs_trip_chains, _pdt_trip_chains):
     ax.set_xticklabels(place_labels_jp, rotation=75, ha='right')
     ax.legend()
 
-    ax.set_yscale('log')
-    # ax.set_yticks([0, 5, 10, 20, 50, 100, 200, 500, 1000])
-    ax.set_yticks([1, 5, 20, 50, 100, 200, 500, 1000])
-    ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    # ax.set_yscale('log')
+    # # ax.set_yticks([0, 5, 10, 20, 50, 100, 200, 500, 1000])
+    # ax.set_yticks([1, 5, 20, 50, 100, 200, 500, 1000])
+    # ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    ax.set_ylim(0, 1800)
+    def autolabel(rects):
+        """Attach a text label above each bar in *rects*, displaying its height."""
+        for rect in rects:
+            height = rect.get_height()
+            ax.annotate('{}'.format(height),
+                        xy=(rect.get_x() + rect.get_width() / 2, height),
+                        xytext=(0, 3),  # 3 points vertical offset
+                        textcoords="offset points",
+                        ha='center', va='bottom')
+
+    # autolabel(rects1)  # display values on bars
+    # autolabel(rects2)
+    # plt.xticks(rotation=75)
+
+    plt.grid(True, which='both', axis='y', linestyle="-.", linewidth=0.5)
+    plt.tight_layout()
+    plt.show()
+
+    pass
+
+
+def compare_region_visit(_obs_trip_chains, _pdt_trip_chains):
+    # grouped bar plot see:
+    # https://matplotlib.org/gallery/lines_bars_and_markers/barchart.html#sphx-glr-gallery-lines-bars-and-markers-barchart-py
+
+    node_visits_before = parse_node_visit(_obs_trip_chains)
+
+    region_visits_before = np.zeros(len(region_names))
+    for idx, _ in enumerate(node_visits_before):
+        region_visits_before[area_region_dict[idx]] += _
+
+    visits_sorted_before, idx_sorted = np.sort(region_visits_before)[::-1], np.argsort(region_visits_before)[::-1]
+    place_labels_jp = [region_names[_] for _ in idx_sorted]
+
+    # todo: when get the node visits after strategies, need to retrieve values according to the sorted indices: idx_sorted
+    node_visits_after = parse_node_visit(_pdt_trip_chains)
+    region_visits_after = np.zeros(len(region_names))
+    for idx, _ in enumerate(node_visits_after):
+        region_visits_after[area_region_dict[idx]] += _
+
+    visits_sorted_after = [region_visits_after[_] for _ in idx_sorted]
+    error = np.abs(visits_sorted_before - visits_sorted_after)
+    print('total visit frequency: observed {}, predicted {}, mean error{}'.format(
+        sum(visits_sorted_before), sum(visits_sorted_after), np.average(np.average(error))))
+
+    x = np.arange(len(place_labels_jp))  # the label locations
+    width = 0.35  # the width of the bars
+
+    fig_wide = 9
+    # fig, ax = plt.subplots(figsize=(fig_wide, fig_wide / (math.sqrt(2) * 1.25)), dpi=250)
+    fig, ax = plt.subplots(dpi=200)
+
+    rects1 = ax.bar(x - width / 2, visits_sorted_before, width, label='Observed', alpha=0.7)
+    rects2 = ax.bar(x + width / 2, visits_sorted_after, width, label='Predicted', alpha=0.7)
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Visit frequency')
+    # ax.set_title('Visit frequency of places (before and after)')
+    ax.set_xticks(x)
+    ax.set_xlim(-1, len(place_labels_jp))
+    ax.set_xticklabels(place_labels_jp, rotation=75, ha='right')
+    ax.legend()
+    ax.set_ylim(0, 1800)
+
+    # ax.set_yscale('log')
+    # # ax.set_yticks([0, 5, 10, 20, 50, 100, 200, 500, 1000])
+    # ax.set_yticks([1, 5, 20, 50, 100, 200, 500, 1000])
+    # ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
 
     def autolabel(rects):
         """Attach a text label above each bar in *rects*, displaying its height."""
@@ -605,7 +714,7 @@ def plot_bars_log(data, y_label, x_ticks):
     plt.show()
 
 
-def plot_node_effect(_original_trip_chains, *tdm_strategy_res):
+def plot_visit_freq_effect(_original_trip_chains, *tdm_strategy_res):
     """ Create tdm strategy plots, including the effect of strategies by grouped bar plot as well as a log-scaled
     total predicted visit frequency plot. # plot_node_effect(predicted_trip_chains['raw'], *tdm_edge_res[:2])
 
@@ -636,17 +745,17 @@ def plot_node_effect(_original_trip_chains, *tdm_strategy_res):
     width = (1 - 0.2) / bar_cnt  # the width of the bars
 
     fig_wide = 10
-    fig, ax1 = plt.subplots(figsize=(fig_wide, fig_wide / (math.sqrt(2) * 1.25)), dpi=250)
+    fig, ax1 = plt.subplots(figsize=(fig_wide, fig_wide / (math.sqrt(2) * 1.25)), dpi=400)
     # plt.xticks(rotation=75)
 
     rects = []
-    # color_range = ['#96ceb4', '#ffcc5c', '#ff6f69']
+    color_range = ['#96ceb4', '#ffcc5c', '#ff6f69']
     for _ in range(bar_cnt):
         i, n = _ + 1, bar_cnt
         loc = x + (i - 1 / 2 * (n + 1)) * width
-        rects.append(ax1.bar(loc, data_to_plot[_], width, label=stg_names[_], alpha=0.7))
+        # rects.append(ax1.bar(loc, data_to_plot[_], width, label=stg_names[_], alpha=0.6))
 
-        # rects.append(ax1.bar(loc, data_to_plot[_], width, label=stg_names[_], color=color_range[_], alpha=0.9))
+        rects.append(ax1.bar(loc, data_to_plot[_], width, label=stg_names[_], color=color_range[_], alpha=0.9))
 
     # todo: plot grouped absolute change
     # Add some text for labels, title and custom x-axis tick labels, etc.
@@ -660,7 +769,7 @@ def plot_node_effect(_original_trip_chains, *tdm_strategy_res):
     # For the minor ticks, use no labels; default NullFormatter.
     ax1.yaxis.set_minor_locator(MultipleLocator(5))
 
-    ax1.grid(which='both', axis='y', linestyle="-.", linewidth=0.5)
+    ax1.grid(which='major', axis='y', linestyle="-.", linewidth=0.5)
 
     def autolabel(rects):
         """Attach a text label above each bar in *rects*, displaying its height."""
@@ -711,9 +820,11 @@ def run_time_strategy(target_areas, effect, dir, suf, run=False):
                       'dwell_matrix': dwell_vector,
                       'dist_matrix': edge_distance_matrix}  """
 
-    utility_matrix = sim_data.utility_matrix
-    edge_time_matrix = sim_data.edge_time_matrix
-    edge_cost_matrix = sim_data.edge_cost_matrix
+    # should re-instantiate such that sim_data will not be dirty
+
+    utility_matrix = np.array(sim_data.utility_matrix)
+    edge_time_matrix = np.array(sim_data.edge_time_matrix)
+    edge_cost_matrix = np.array(sim_data.edge_cost_matrix)
 
     # find all combinations of pairing ods that are sent as targets
 
@@ -770,9 +881,9 @@ def run_node_strategy(strategies: dict, dir, suf, run=False):
     """ {20: effect, 21: effect} """
     stg_type = 'util'
 
-    utility_matrix = sim_data.utility_matrix
-    edge_time_matrix = sim_data.edge_time_matrix
-    edge_cost_matrix = sim_data.edge_cost_matrix
+    utility_matrix = np.array(sim_data.utility_matrix)
+    edge_time_matrix = np.array(sim_data.edge_time_matrix)
+    edge_cost_matrix = np.array(sim_data.edge_cost_matrix)
 
     # find all combinations of pairing ods that are sent as targets
 
@@ -781,7 +892,7 @@ def run_node_strategy(strategies: dict, dir, suf, run=False):
     for k, v in strategies.items():
         print('Node {}: util before is {} '.format(place_jp[k], utility_matrix[k]))
         # apply strategies (both back and forth)
-        utility_matrix[k] = utility_matrix[k] * (1 + np.array(v))
+        utility_matrix[k] += np.array(v)
 
         print('Node {}: util after is {} '.format(place_jp[k], utility_matrix[k]))
 
@@ -795,30 +906,30 @@ def run_node_strategy(strategies: dict, dir, suf, run=False):
     return {'stg_no': suf, 'trip_matrix': predicted_trip_matrix, 'trip_chains': predicted_trip_chains}
 
 
-def parse_tripchain_df(predicted_df, *tdm_applied_dfs):
-    predicted_df.set_index('trip pattern', inplace=True)
+def parse_tripchain_df(_predicted_df, *tdm_applied_dfs):
+    res = _predicted_df.set_index('trip pattern')
     # change column names
-    new_columns = predicted_df.columns.values
+    new_columns = res.columns.values
     new_columns[0], new_columns[1] = 'predicted pattern JP', 'predicted cnt'
-    predicted_df.columns = new_columns
+    res.columns = new_columns
 
-    res = predicted_df
     for idx, df in enumerate(tdm_applied_dfs):
         df.set_index('trip pattern', inplace=True)
         # change column names
         new_columns = df.columns.values
-        new_columns[0], new_columns[1] = 'JP of stg {}'.format(idx+1), 'cnt of stg {}'.format(idx+1)
+        new_columns[0], new_columns[1] = 'JP of stg {}'.format(idx + 1), 'cnt of stg {}'.format(idx + 1)
         df.columns = new_columns
         # merge dfs
         res = pd.merge(res, df, left_index=True, right_index=True, how='outer')
-        res['cnt_diff_{}'.format(idx+1)] = res['cnt of stg {}'.format(idx+1)] - res['predicted cnt']
+        res = res.fillna(0)
+        res['cnt_diff_{}'.format(idx + 1)] = res['cnt of stg {}'.format(idx + 1)] - res['predicted cnt']
         pass
-
 
     # replace nan values to zeros
     res = res.fillna(0)
 
     return res
+
 
 if __name__ == '__main__':
     # Data preparation
@@ -873,7 +984,14 @@ if __name__ == '__main__':
 
     # %% statistics of interest
     enumerated_usrs, obs_trip_matrix = parse_observed_trips(agent_database)
-    obs_trip_chains = [list(np.array(_.path_obs) - 1) for _ in agent_database]
+    obs_trip_chains = []
+    for _ in agent_database:
+        if _.preference is None or _.path_obs is None:
+            continue
+        # skip empty paths (no visited location)
+        if len(_.path_obs) < 3:
+            continue
+        obs_trip_chains.append(list(np.array(_.path_obs) - 1))
     # observed trip tables 要不要scaled to the whole population's size?
     write_flag = 0
     if write_flag:
@@ -903,7 +1021,7 @@ if __name__ == '__main__':
     # error_trip_percentage = (predicted_trip_tables - obs_trip_table) / obs_trip_table
 
     # draw comparison between observed and predicted node visit frequencies
-    compare_plot = 0
+    compare_plot = 1
     if compare_plot:
         compare_node_visit(obs_trip_chains, predicted_trip_chains['raw'])
 
@@ -951,8 +1069,8 @@ if __name__ == '__main__':
     # plot tdm strategy effects
     _plot = 0
     if _plot:
-        plot_node_effect(predicted_trip_chains['raw'], *tdm_edge_res[:3])
-        plot_node_effect(predicted_trip_chains['raw'], *tdm_edge_res[3:])
+        plot_visit_freq_effect(predicted_trip_chains['raw'], *tdm_edge_res[:3])
+        plot_visit_freq_effect(predicted_trip_chains['raw'], *tdm_edge_res[3:])
 
     # create tdm effect trip chain df
     _create_df = 1
@@ -960,7 +1078,8 @@ if __name__ == '__main__':
     tdm_dfs = [_['trip_chains']['no_OD'] for _ in tdm_edge_res]
     if _create_df:
         res_df = parse_tripchain_df(predicted_df, *tdm_dfs)
-        # res_df.to_excel('Comparison of tdm strategies edge.xlsx')
+        # res_df.to_excel('Comparison of tdm strategies edge (updated).xlsx')
+
     # %% predicted attraction visit frequency and tdm strategy effects plot
     new_edge_res = []
 
@@ -971,43 +1090,82 @@ if __name__ == '__main__':
     Scenario 2: node attractiveness. 
     Strategies: increase attractiveness by introducing investment
     
-    Targets:
+    Targets: we also reviewed attraction areas that should have higher attractiveness 
       1) Empirical: 
               a. 1, 2, 35, 36, 37 (distant areas)
-              b. 20, 21; 
-                 18, 17  (near Shijo Kawaramachi)
-              c. 19, 22, 26, 30 ( near Arashiyama, package sites)
-              d. 31, 32  (
+              b. 20, 21;  (Nijo area)
+              c. 19, 22 (花園方面 (also increase 金阁寺 attradtivenss)
+              d. 26, 30 ( Katsura area, potential package sites) (also increase 14和23 也要改） , 
+              e. 31, 32, 33  (東福寺周辺, 東寺周辺, 伏見稲荷大社周辺 ) vs. [京都站和祇園
+              f. 見直す review of the areas that should have higer value
 
     """
 
     trip_temp_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp', 'util')  # directory
 
-    effect = [0, 0.3, 0.3]  # improve in cultural and art + leisure activities
-    node_strategies = {1: {20: effect, 21: effect},
-                       2: {1: effect, 2: effect, 35: effect, 36: effect, 37: effect}
-                       }
+    type_1 = [0, 0.3, 0.3]  # improve in cultural and art + leisure activities (additive)
+    type_2 = [0.3, 0.3, 0.3]
+    type_3 = [0.3, 0, 0]
 
-    # time_targets = [(27, 23), (14, 22), (28, 26)]
-    # 可见一个strategy的list, 然后enumerate strategy instances
+    # node indices start from 0
+    node_strategies = {1: {0: type_1, 1: type_2, 34: type_2, 35: type_2, 36: type_2},
+                       2: {19: type_1, 20: type_1},
+                       3: {18: type_1, 21: type_1, 9: type_3},
+                       4: {25: type_2, 29: type_2, 13: type_1, 22: type_3},
+                       5: {30: type_2, 31: type_2, 32: type_2},
+                       6: {14: type_3, 32: type_3, 9: type_3, 13: type_1, 22: type_3}
+                       }
 
     strategy_set_node = [StrategyNode('util', v) for k, v in node_strategies.items()]
 
-    # run_dummy = bool(input('4. Run TDM node scenarios? Enter to skip.'))
-    #
-    # tdm_node_res = []
-    # # evaluate (if run dummy is True) and parse
-    # for _ in strategy_set_node:
-    #     tdm_node_res.append(run_node_strategy(_.strategy, trip_temp_dir, _.suffix, run=run_dummy))
+    run_dummy = bool(input('4. Run TDM node scenarios? Enter to skip.'))
 
-    # %% result and indicators
-    """1. trip tables (after strategy) 2. effects in ratio (referring to the original trip statistics 
-    3. attraction visit distribution"""
+    tdm_node_res = []
+    # evaluate (if run dummy is True) and parse
+    for _ in strategy_set_node:
+        tdm_node_res.append(run_node_strategy(_.strategy, trip_temp_dir, _.suffix, run=run_dummy))
 
-    # methods for plot attraction visits finished
+    # plot tdm node strategy effects
+    _plot_node = 0
+    if _plot_node:
+        plot_visit_freq_effect(predicted_trip_chains['raw'], *tdm_node_res[:3])
+        plot_visit_freq_effect(predicted_trip_chains['raw'], *tdm_node_res[3:])
 
-    # todo: trip statistics before and after applying strategies
-    # todo: compare predicted_trip_tables (after applying strategy) and original_trip_tables
+    # create tdm effect trip chain df
+    _create_df = 1
+    tdm_node_dfs = [_['trip_chains']['no_OD'] for _ in tdm_node_res]
+    if _create_df:
+        res_df = parse_tripchain_df(predicted_df, *tdm_node_dfs)
+        # res_df.to_excel('Comparison of tdm strategies node (updated).xlsx')
+    # %% Sankey diagram for attraction area of interest
+
+    # sankey(predicted_trip_chains['raw'], n - 1, place_jp)
+    # compare between the predicted and observed
+    try:
+        while True:
+            n = int(input('Please input the attraction index, starting from 1. E.g. node 1: 1:\n'))
+            sk.sankey_echart_comparison(obs_trip_chains, predicted_trip_chains['raw'], n - 1, place_jp)
+
+    except ValueError or IndexError:
+        pass  # 有错误就直接pass了
+
+    # %% compare between the base and improved predicted result
+    stg_dfs = [tdm_edge_res[0]['trip_chains']['raw'],
+               tdm_edge_res[3]['trip_chains']['raw'],
+               tdm_node_res[1]['trip_chains']['raw'],
+               tdm_node_res[3]['trip_chains']['raw']
+               ]
+    stg_names = ['Edge1', 'Edge 4', 'Node 2', 'Node 4']
+
+    for _, new in enumerate(stg_dfs):
+        print('\nCompare effects of strategy {}'.format(stg_names[_]))
+        try:
+            while True:
+                n = int(input('  Please input the attraction index, starting from 1. E.g. node 1: 1. '
+                              'Enter to skip.\n'))
+                sk.sankey_echart_strategy(predicted_trip_chains['raw'], new, n - 1, place_jp, stg_names[_])
+        except ValueError or IndexError:
+            pass  # 有错误就直接pass了
 
     # %% Appendix and reference
 
@@ -1033,23 +1191,69 @@ if __name__ == '__main__':
     # # 设置y轴的上限
     # plt.ylim(ymax=np.ceil(maxfreq / 10) * 10 if maxfreq % 10 else maxfreq + 10)
 
+    # %%summarize areas into regions
+
+    region = pd.read_excel(os.path.join(os.path.dirname(__file__), 'Project Database', 'Region partition.xlsx'))
+    region_names = list(region['Region name'].values)
+    region_areas = [str(_).split(',') for _ in region['Areas'].values]
+
+    area_region_dict = {}
+    for idx, _ in enumerate(region_names):
+        for _node in region_areas[idx]:
+            area_region_dict[int(_node) - 1] = idx
+
+    region_compare_plot = 1
+    if region_compare_plot:
+        compare_region_visit(obs_trip_chains, predicted_trip_chains['raw'])
     # %% histogram of total visited attractions
-    # if input('\nPlot histogram of total visited attractions?'):
-    #     visited_cnt = []
-    #     for _ in agent_database:
-    #         visited_cnt.append(len(_.path_obs) - 2)
-    #
-    #     #  matplotlib.axes.Axes.hist() 方法的接口
-    #     # bins_range = np.array([_ for _ in range(max(visited_cnt) + 2)])
-    #
-    #     bins_range = np.arange(0, max(visited_cnt) + 1.5) - 0.5
-    #
-    #     fig, ax = plt.subplots(dpi=200)
-    #     n, bins, patches = ax.hist(x=visited_cnt, bins=bins_range, color='#0504aa',
-    #                                alpha=0.6, rwidth=0.85)
-    #     plt.grid(axis='y', alpha=0.75)
-    #     plt.xlabel('Places visited')
-    #     plt.ylabel('Frequency')
-    #     plt.title('An histogram of total places visited')
-    #
-    #     plt.show()
+
+    null_trip_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp', 'null')
+    if input('5. Evaluate predicted trip table at null case? Enter to skip.'):
+        # evaluate and dump
+        eval_fun_trips_null(s_null, _dir=null_trip_dir)
+
+    null_trip_matrix = parse_trip_matrix(null_trip_dir, '')  # suffix is ''. no suffix
+    null_trip_chains = parse_trip_pattern(null_trip_dir, '')
+
+    if input('\nPlot histogram of total visited attractions?'):
+        visited_cnt = []
+        for _ in agent_database:
+            visited_cnt.append(len(_.path_obs) - 2)
+
+        #  matplotlib.axes.Axes.hist() 方法的接口
+        # bins_range = np.array([_ for _ in range(max(visited_cnt) + 2)])
+
+        bins_range = np.arange(0, max(visited_cnt) + 1.5) - 0.5
+
+        fig, axes = plt.subplots(2, 1, dpi=200)
+        n, bins, patches = axes[0].hist(x=visited_cnt, bins=bins_range,
+                                        alpha=0.5, rwidth=0.85, label='observed')
+        n, bins, patches = axes[1].hist(x=visited_cnt, bins=bins_range,
+                                        alpha=0.5, rwidth=0.85, label='observed')
+
+        visited_cnt_pdt = []
+        for _ in predicted_trip_chains['raw']:
+            visited_cnt_pdt.append(len(_) - 2)
+
+        n, bins, patches = axes[0].hist(x=visited_cnt_pdt, bins=bins_range,
+                                        alpha=0.5, rwidth=0.85, color='#0504aa', label='predicted')
+        axes[0].set_title('Histogram of number of visits for the population')
+        axes[0].set_ylabel('Frequency')
+        axes[0].set_ylim(0, 500)
+        axes[0].legend()
+        axes[0].grid(axis='y', alpha=0.75)
+
+        visited_cnt_null = []
+        for _ in null_trip_chains['raw']:
+            visited_cnt_null.append(len(_) - 2)
+
+        n, bins, patches = axes[1].hist(x=visited_cnt_null, bins=bins_range,
+                                        alpha=0.2, rwidth=0.85, color='orange', label='null')
+
+        axes[1].set_ylabel('Frequency')
+        axes[1].set_ylim(0, 500)
+        axes[1].legend()
+        axes[1].grid(axis='y', alpha=0.75)
+        axes[1].set_xlabel('Places visited')
+
+        plt.show()

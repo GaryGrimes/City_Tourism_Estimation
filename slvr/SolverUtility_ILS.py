@@ -621,6 +621,210 @@ class SolverUtility(object):
         q.put(process_idx)  # should depreciate
 
     @staticmethod
+    def solver_trip_stat_null(q, process_idx, node_num, agent_database, dir_name, suf_name, **kwargs):
+        """ Predict tours and generate trip frequency table for a single set of parameters. """
+
+        # Levenshtein distance, with path threshold filter
+
+        # pass variables
+        util_matrix, time_matrix, cost_matrix, dwell_matrix, \
+        dist_matrix = kwargs['util_matrix'], kwargs['time_matrix'], \
+                      kwargs['cost_matrix'], kwargs['dwell_matrix'], kwargs['dist_matrix']
+
+        # behavioral parameters data setup
+        Solver_ILS.alpha = kwargs['alpha']
+        Solver_ILS.beta = kwargs['beta']
+        Solver_ILS.phi = kwargs['phi']
+
+        # save results for all agents
+        _penalty, _pdt_path, _obs_path = [], [], []
+        #  trip_table 变量， 并在sent to queue的时候折叠为array (using .flatten()), customer side use reshape([37, 37])
+
+        # initiate statistics to output
+        trip_table = np.zeros((37, 37), dtype=int)
+
+        # enumerate each tourist
+        # node setup
+
+        node_properties = {'node_num': node_num,
+                           'utility_matrix': util_matrix,
+                           'dwell_vector': dwell_matrix}
+
+        # edge setup
+
+        edge_properties = {'edge_time_matrix': time_matrix,
+                           'edge_cost_matrix': cost_matrix,
+                           'edge_distance_matrix': dist_matrix}
+
+        Solver_ILS.edge_setup(**edge_properties)
+
+        for _idd, _agent in enumerate(agent_database):
+            if _idd > 0 and _idd % 500 == 0:
+                print(
+                    '--- Running optimal tours for the {} agent in {} for process {}'.format(
+                        _idd, len(agent_database), mp.current_process().name))
+
+            pref = np.array([1 / 3, 1 / 3, 1 / 3])
+            observed_path = _agent.path_obs
+            t_max, origin, destination = _agent.time_budget, observed_path[0] - 1, observed_path[-1] - 1
+            visit_history = {}
+
+            if pref is None or observed_path is None:
+                continue
+            # skip empty paths (no visited location)
+            if len(observed_path) < 3:
+                continue
+
+            """node setup process should be here!!"""
+            # ... since nodes controls visit history in path update for each agent
+            Solver_ILS.node_setup(**node_properties)
+
+            # agents setup
+            agent_properties = {'time_budget': t_max,
+                                'origin': origin,
+                                'destination': destination,
+                                'preference': pref,
+                                'visited': visit_history}
+
+            Solver_ILS.agent_setup(**agent_properties)
+
+            # each path_op will be saved into the predicted path set for agent n
+            path_pdt = []
+
+            # %% strat up solver
+            # solver initialization
+            initial_path = Solver_ILS.initial_solution_null()
+
+            if len(initial_path) < 2:  # time budget too small
+                path_pdt.append(Solver_ILS.comp_fill())
+            elif len(initial_path) == 2:  # negative total utility for any visit
+                path_pdt.append(initial_path)
+            else:
+                first_visit = initial_path[1]
+                Solver_ILS.Node_list[first_visit].visit = 1
+
+                order = initial_path
+                final_order = list(order)
+
+                # No edgeMethod in my case
+                _u, _u8, _U10 = [], [], []
+
+                counter_2 = 0
+                no_improve = 0
+                best_found = float('-inf')
+
+                while no_improve < 50:
+                    best_score = float('-inf')
+                    local_optimum = 0
+
+                    # print(Order)
+
+                    while local_optimum == 0:
+                        local_optimum, order, best_score = Solver_ILS.insert_null(order, best_score)
+
+                    counter_2 += 1  # 2指inner loop的counter
+                    v = len(order) - 1
+
+                    _u.append(best_score)  # U is utility memoizer
+                    _u8.append(v)
+                    _U10.append(max(_u))
+
+                    if best_score > best_found:
+                        best_found = best_score
+                        final_order = list(order)
+
+                        # save intermediate good paths into results
+                        path_pdt.append(list(final_order))
+                        no_improve = 0  # improved
+                    else:
+                        no_improve += 1
+
+                    if len(order) <= 2:
+                        continue
+                    else:
+                        s = np.random.randint(1, len(order) - 1)
+                        R = np.random.randint(1, len(order) - s)  # from node S, delete R nodes (including S)
+
+                    if s >= min(_u8):
+                        s = s - min(_u8) + 1
+
+                    order = Solver_ILS.shake(order, s, R)  # break sequence
+
+            path_obs = list(
+                np.array(_agent.path_obs) - 1)  # attraction indices in solver start from 0 (in survey start from 1)
+
+            """对比的是combinatorial path score"""
+            selected_path = []
+            if len(path_pdt) < 3:  # return directly if...
+                selected_path = list(path_pdt)
+            else:
+                # evaluate scores for all path predicted (not penalty with the observed path here)
+                # select only 10 paths with high scores for filtering
+                path_pdt = path_pdt[-10:]
+
+                path_pdt_score = []
+                for _path in path_pdt:
+                    # The memoizer must accept agent's preference as well.
+                    path_pdt_score.append(Solver_ILS.eval_util_null(_path))  # a list of penalties
+
+                filter_ratio = 0.15  # predicted paths with penalties within 15% interval
+                max_score = max(path_pdt_score)  # max utility score for current path
+
+                ''' within 85% score or at least 3 paths in the predicted path set'''
+                threshold = max_score - abs(filter_ratio * max_score)
+
+                for _ in np.argsort(path_pdt_score)[::-1]:
+                    if path_pdt_score[_] >= threshold:
+                        selected_path.append(path_pdt[_])
+                    else:
+                        break
+
+                # at least 3 paths in the set
+                if len(selected_path) < 3:
+                    selected_path = []
+                    for _ in np.argsort(path_pdt_score)[-3:]:
+                        selected_path.append(path_pdt[_])
+
+            # -------- Path penalty evaluation --------
+            # compare predicted path with observed ones
+            # modified on Nov. 3 2019
+            # last modified on Nov. 16
+
+            best_path_predicted, lowest_penalty = [], float('inf')
+            for _path in selected_path:
+                res = Solver_ILS.path_penalty(path_obs, _path)
+                if not best_path_predicted:
+                    best_path_predicted, lowest_penalty = _path, res
+                if res < lowest_penalty:
+                    best_path_predicted, lowest_penalty = _path, res
+
+            # WRITE PREDICTED PATH AND PENALTY
+
+            _penalty.append(lowest_penalty)
+            _pdt_path.append(best_path_predicted)
+            _obs_path.append(path_obs)
+
+            # parse trip frequency
+            for _idx in range(len(best_path_predicted) - 1):
+                _o, _d = best_path_predicted[_idx], best_path_predicted[_idx + 1]
+                try:
+                    trip_table[_o, _d] += 1
+                except IndexError:
+                    continue
+
+        # if oversize (capacity limit) encountered, try dump the results by pickle and read again
+        """dumping trip matrix"""
+        name = 'predicted_trip_table_null{}_{}.pickle'.format(suf_name, process_idx)
+        file = open(os.path.join(dir_name, name), 'wb')
+        pickle.dump(trip_table, file)
+
+        name2 = 'trip_chain_null{}_{}.pickle'.format(suf_name, process_idx)
+        file2 = open(os.path.join(dir_name, name2), 'wb')
+        pickle.dump(_pdt_path, file2)
+
+        q.put(process_idx)  # should depreciate
+
+    @staticmethod
     def solver_util_scatter(q, process_idx, node_num, agent_database, **kwargs):
         """ Predict tours and generate tuples with observed and predicted trip
         utilities for a single set of parameters. Using Levenshtein distance, with path threshold filter."""
@@ -1938,11 +2142,14 @@ if __name__ == '__main__':
     # alpha = -5.392
     # beta = {'intercept': 8.819, 'shape': 3.855, 'scale': 0.989}
 
-    alpha = 0.015
-    beta = {'intercept': 324.836, 'shape': 0.519, 'scale': 0.724}
+    alpha = 0.006729682
+    beta = {'intercept': 393.7222513, 'shape': 0.859129711, 'scale': 0.390907255}
 
-    pref = [0.5, 0.3, 0.2]  # just for test
-    observed_path = [29, 27, 24, 25, 29]  # index starts from 1
+    # pref = [0.5, 0.3, 0.2]  # just for test
+
+    pref = agent_database[19].preference
+
+    observed_path = [44, 24, 17, 44]  # index starts from 1
     # observed_path = [29, 29, 29]  # index starts from 1
 
     t_max, origin, destination = 340, observed_path[0] - 1, observed_path[-1] - 1

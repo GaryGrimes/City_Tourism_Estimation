@@ -171,7 +171,7 @@ if __name__ == '__main__':
     df_observed_trip_table = pd.DataFrame(observed_trip_table, dtype=int)
     flag = 0
     if flag:
-        df_observed_trip_table.to_excel('Project Database/Observed_trip_table.xlsx')
+        df_observed_trip_table.to_excel('Project Database/Trips/Observed_trip_table.xlsx')
 
     per_congestion_comp_mat = congestion_comp_mat / observed_trip_table
     per_c_congestion_comp_mat = c_congestion_comp_mat / observed_trip_table

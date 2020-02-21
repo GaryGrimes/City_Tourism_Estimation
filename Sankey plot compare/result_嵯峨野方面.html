@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Awesome-pyecharts</title>
+            <script type="text/javascript" src="https://assets.pyecharts.org/assets/echarts.min.js"></script>
+
+</head>
+<body>
+    <div id="e9d98fb897874638b82f3a258beac199" class="chart-container" style="width:900px; height:500px;"></div>
+    <script>
+        var chart_e9d98fb897874638b82f3a258beac199 = echarts.init(
+            document.getElementById('e9d98fb897874638b82f3a258beac199'), 'white', {renderer: 'canvas'});
+        var option_e9d98fb897874638b82f3a258beac199 = {
+    "animation": true,
+    "animationThreshold": 2000,
+    "animationDuration": 1000,
+    "animationEasing": "cubicOut",
+    "animationDelay": 0,
+    "animationDurationUpdate": 300,
+    "animationEasingUpdate": "cubicOut",
+    "animationDelayUpdate": 0,
+    "color": [
+        "#c23531",
+        "#2f4554",
+        "#61a0a8",
+        "#d48265",
+        "#749f83",
+        "#ca8622",
+        "#bda29a",
+        "#6e7074",
+        "#546570",
+        "#c4ccd3",
+        "#f05b72",
+        "#ef5b9c",
+        "#f47920",
+        "#905a3d",
+        "#fab27b",
+        "#2a5caa",
+        "#444693",
+        "#726930",
+        "#b2d235",
+        "#6d8346",
+        "#ac6767",
+        "#1d953f",
+        "#6950a1",
+        "#918597"
+    ],
+    "series": [
+        {
+            "type": "sankey",
+            "name": "Number of trips",
+            "data": [
+                {
+                    "name": "Others_\u767a"
+                },
+                {
+                    "name": "\u5d50\u5c71\u65b9\u9762_\u7740"
+                },
+                {
+                    "name": "\u4eac\u90fd\u5e02\u5185\u306e\u5bbf\u6cca\u65bd\u8a2d_\u767a"
+                },
+                {
+                    "name": "\u7947\u5712\u65b9\u9762_\u767a"
+                },
+                {
+                    "name": "Others_\u7740"
+                },
+                {
+                    "name": "\u5d50\u5c71\u65b9\u9762_\u767a"
+                },
+                {
+                    "name": "\uff2a\uff32\u4eac\u90fd\u99c5\uff08\u65b0\u5e79\u7dda\uff09_\u7740"
+                },
+                {
+                    "name": "\u4eac\u798f\uff08\u53e1\u96fb\u30fb\u5d50\u96fb\uff09\u99c5_\u7740"
+                },
+                {
+                    "name": "\u4eac\u90fd\u5e02\u5185\u306e\u5bbf\u6cca\u65bd\u8a2d_\u7740"
+                },
+                {
+                    "name": "\u4eac\u962a\u99c5_\u7740"
+                },
+                {
+                    "name": "\u677e\u5c3e\u5927\u793e\u5468\u8fba_\u767a"
+                },
+                {
+                    "name": "\u962a\u6025\u99c5_\u767a"
+                },
+                {
+                    "name": "\uff2a\uff32\u4eac\u90fd\u99c5\uff08\u5728\u6765\u7dda\uff09_\u767a"
+                },
+                {
+                    "name": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs"
+                },
+                {
+                    "name": "\u9ad8\u96c4\u65b9\u9762_\u767a"
+                },
+                {
+                    "name": "\u5d6f\u5ce8\u91ce\u65b9\u9762_\u7740"
+                },
+                {
+                    "name": "\u4eac\u90fd\u99c5\u5468\u8fba_\u767a"
+                },
+                {
+                    "name": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762_\u7740"
+                },
+                {
+                    "name": "\u8863\u7b20\u30fb\u5fa1\u5ba4\u65b9\u9762_\u7740"
+                },
+                {
+                    "name": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762_\u767a"
+                },
+                {
+                    "name": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt"
+                },
+                {
+                    "name": "\u5e73\u5b89\u795e\u5bae\u5468\u8fba_\u767a"
+                },
+                {
+                    "name": "\u4eac\u90fd\u99c5\u5468\u8fba_\u7740"
+                },
+                {
+                    "name": "\u4e0b\u9d28\u795e\u793e\u5468\u8fba_\u7740"
+                },
+                {
+                    "name": "\uff2a\uff32\u4eac\u90fd\u99c5\uff08\u65b0\u5e79\u7dda\uff09_\u767a"
+                },
+                {
+                    "name": "\u4eac\u90fd\u5e02\u5185\u306e\u81ea\u5b85\u30fb\u77e5\u4eba\u5b85_\u7740"
+                }
+            ],
+            "links": [
+                {
+                    "source": "\u5d50\u5c71\u65b9\u9762_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "value": 66
+                },
+                {
+                    "source": "\u4eac\u90fd\u5e02\u5185\u306e\u5bbf\u6cca\u65bd\u8a2d_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "value": 15
+                },
+                {
+                    "source": "\u9ad8\u96c4\u65b9\u9762_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "value": 14
+                },
+                {
+                    "source": "\uff2a\uff32\u4eac\u90fd\u99c5\uff08\u65b0\u5e79\u7dda\uff09_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "value": 7
+                },
+                {
+                    "source": "\u962a\u6025\u99c5_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "value": 7
+                },
+                {
+                    "source": "\u4eac\u90fd\u99c5\u5468\u8fba_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "value": 7
+                },
+                {
+                    "source": "\uff2a\uff32\u4eac\u90fd\u99c5\uff08\u5728\u6765\u7dda\uff09_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "value": 6
+                },
+                {
+                    "source": "Others_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "value": 40
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "target": "\u5d50\u5c71\u65b9\u9762_\u7740",
+                    "value": 44
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762_\u7740",
+                    "value": 14
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "target": "\uff2a\uff32\u4eac\u90fd\u99c5\uff08\u65b0\u5e79\u7dda\uff09_\u7740",
+                    "value": 13
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "target": "\u8863\u7b20\u30fb\u5fa1\u5ba4\u65b9\u9762_\u7740",
+                    "value": 12
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "target": "\u4eac\u90fd\u99c5\u5468\u8fba_\u7740",
+                    "value": 10
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "target": "\u4eac\u90fd\u5e02\u5185\u306e\u5bbf\u6cca\u65bd\u8a2d_\u7740",
+                    "value": 10
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "target": "\u4eac\u90fd\u5e02\u5185\u306e\u81ea\u5b85\u30fb\u77e5\u4eba\u5b85_\u7740",
+                    "value": 6
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_obs",
+                    "target": "Others_\u7740",
+                    "value": 40
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "value": 9
+                },
+                {
+                    "source": "\u5e73\u5b89\u795e\u5bae\u5468\u8fba_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "value": 3
+                },
+                {
+                    "source": "\u7947\u5712\u65b9\u9762_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "value": 3
+                },
+                {
+                    "source": "\u5d50\u5c71\u65b9\u9762_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "value": 2
+                },
+                {
+                    "source": "\u677e\u5c3e\u5927\u793e\u5468\u8fba_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "value": 1
+                },
+                {
+                    "source": "\u4eac\u90fd\u5e02\u5185\u306e\u5bbf\u6cca\u65bd\u8a2d_\u767a",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "value": 1
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "target": "\u5d50\u5c71\u65b9\u9762_\u7740",
+                    "value": 9
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762_\u7740",
+                    "value": 3
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "target": "\u5d6f\u5ce8\u91ce\u65b9\u9762_\u7740",
+                    "value": 3
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "target": "\uff2a\uff32\u4eac\u90fd\u99c5\uff08\u65b0\u5e79\u7dda\uff09_\u7740",
+                    "value": 2
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "target": "\u4eac\u962a\u99c5_\u7740",
+                    "value": 1
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "target": "\u4e0b\u9d28\u795e\u793e\u5468\u8fba_\u7740",
+                    "value": 1
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "target": "\u4eac\u798f\uff08\u53e1\u96fb\u30fb\u5d50\u96fb\uff09\u99c5_\u7740",
+                    "value": 1
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_pdt",
+                    "target": "Others_\u7740",
+                    "value": 1
+                }
+            ],
+            "left": "5%",
+            "top": "5%",
+            "right": "20%",
+            "bottom": "5%",
+            "nodeWidth": 20,
+            "nodeGap": 8,
+            "nodeAlign": "justify",
+            "layoutIteration": 32,
+            "orient": "horizontal",
+            "draggable": true,
+            "focusNodeAdjacency": false,
+            "label": {
+                "show": true,
+                "position": "right",
+                "margin": 8
+            },
+            "lineStyle": {
+                "width": 1,
+                "opacity": 0.2,
+                "curveness": 0.5,
+                "type": "dotted",
+                "color": "source"
+            }
+        }
+    ],
+    "legend": [
+        {
+            "data": [
+                "Number of trips"
+            ],
+            "selected": {
+                "Number of trips": true
+            },
+            "show": true,
+            "padding": 5,
+            "itemGap": 10,
+            "itemWidth": 25,
+            "itemHeight": 14
+        }
+    ],
+    "tooltip": {
+        "show": true,
+        "trigger": "item",
+        "triggerOn": "mousemove|click",
+        "axisPointer": {
+            "type": "line"
+        },
+        "textStyle": {
+            "fontSize": 14
+        },
+        "borderWidth": 0
+    },
+    "title": [
+        {
+            "text": "A Sankey Diagram of Node \u5d6f\u5ce8\u91ce\u65b9\u9762",
+            "padding": 5,
+            "itemGap": 10
+        }
+    ]
+};
+        chart_e9d98fb897874638b82f3a258beac199.setOption(option_e9d98fb897874638b82f3a258beac199);
+    </script>
+</body>
+</html>
