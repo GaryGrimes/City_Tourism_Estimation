@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 This script is to generate statistics for observed visit and trip frequency.
-Also used to evaluate the simualtion results .
+Also used to evaluate the simulation results.
 Last modified on Dec. 18
 """
 
