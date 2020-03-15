@@ -1,5 +1,5 @@
-''' This script decides parameters that will be used in numerical Hessian calculation, and return objective
-functions of those parameters as "evaluation result". Last modified on Dec.5'''
+""" This script decides parameters that will be used in numerical Hessian calculation, and return objective
+functions of those parameters as "evaluation result". Last modified on Dec.5"""
 
 import numpy as np
 import pickle

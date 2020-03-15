@@ -120,11 +120,20 @@ if __name__ == '__main__':
     # range_shape = [0.1, 0.5, 1, 2, 5, 7]
     # range_scale = [0.2, 0.4, 0.6, 0.8, 1, 2, 5]
 
-    range_alpha = [0.03]
+    """Feb. 2"""
+    # range_alpha = [0.03]
+    # # intercept should be more than 50 times of alpha
+    # range_intercept = [300]
+    # range_shape = [0.1, 0.5, 1, 2, 5, 7]
+    # range_scale = [0.2, 0.4, 0.6, 0.8, 1, 2, 5]
+
+    """Mar. 15"""
+    range_alpha = [0.003, 0.01, 0.03, 0.1, 0.3, 1]
     # intercept should be more than 50 times of alpha
-    range_intercept = [300]
-    range_shape = [0.1, 0.5, 1, 2, 5, 7]
-    range_scale = [0.2, 0.4, 0.6, 0.8, 1, 2, 5]
+    range_intercept = [100, 300, 1000]
+    range_shape = [0.1, 0.3, 1, 3, 5]
+    range_scale = [0.2, 0.4, 0.6, 0.8, 1, 3]
+
 
     # %% generate population
 

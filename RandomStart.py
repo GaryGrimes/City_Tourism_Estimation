@@ -1,3 +1,7 @@
+"""Grid search functionality development and test.
+See ~_ILS for functioning script.
+"""
+
 import numpy as np
 import pickle
 import datetime
@@ -126,6 +130,7 @@ if __name__ == '__main__':
     itv = [0.01, 0.03, 0.1, 0.3, 1, 3, 10]
     size_itv = len(itv)
     # create parameter columns
+
     """ 不用下面这么麻烦啦
     beta4_col = [0.01, 0.03, 0.1, 0.3, 1, 3, 10] * size_itv ** 3
     beta3_col = ([0.01] * 7 + [0.03] * 7 + [0.1] * 7 + [0.3] * 7 + [1] * 7 + [3] * 7 + [10] * 7) * 7 ** 2
@@ -224,18 +229,14 @@ if __name__ == '__main__':
                                                                                             _))
 
         del Population[:core_process]
+        # todo 计算还剩下多少parameter需要计算，当前的进度（%)，预估时间
 
+    # %% save results into DF
+    Population = [[itv[indices[j][i]] for i in range(4)] for j in range(len(indices))]
+    Res = pd.DataFrame(columns=['index', 'a1', 'a2', 'b2', 'b3', 'penalty', 'score'])
+    Res['index'] = range(len(Population))
+    Res.loc[:, 'a1':'b3'] = Population
+    Res['score'] = Population_scores
+    Res['penalty'] = Population_penalties
 
-    # # %% save results into DF
-    # Res = pd.DataFrame(columns=['itr', 'a1', 'a2', 'b2', 'b3', 'penalty', 'score', 'record_penalty', 'record'])
-    # Res['itr'] = range(itr_max)
-    # Res.loc[:, 'a1':'b3'] = x_max
-    # Res['score'] = gnr_max
-    # Res['penalty'] = score2penalty(gnr_max)[0]
-    # Res['record_penalty'] = score2penalty(y_max)[0]
-    # Res['record'] = y_max
-    # Res.to_excel('Iteration result.xlsx')
-    #
-    # # save parameters into DF
-    # df_parameter = pd.DataFrame.from_dict(PARAMETER, orient='index')
-    # df_parameter.to_excel('Parameter in each iteration.xlsx')
+    Res.to_excel('Initialization result.xlsx')

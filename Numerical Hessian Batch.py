@@ -1,3 +1,8 @@
+"""Methods for getting numerical Hessian and pseudo t value for the estimated parameters.
+Input: estimated (best) set of parameters
+Output: numerical Hessian and pseudo t value
+"""
+
 import numpy as np
 import numdifftools as nd
 import sympy
@@ -297,7 +302,7 @@ if __name__ == '__main__':
     # numerical gradient using * parameter
     # s = [0.006729682, 393.7222513, 0.859129711, 0.390907255]  # Feb. 2
 
-    s =  [0.100, 700.000, 0.367, 0.400]  # Feb. 9 ES
+    s = [0.100, 700.000, 0.367, 0.400]  # Feb. 9 ES
 
     s1 = [0.008162314, 392.3767281, 0.933196936, 0.348740611]
 

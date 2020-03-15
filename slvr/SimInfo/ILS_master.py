@@ -1,3 +1,7 @@
+"""Optimal Tour Solver using Orienteering Problem based algorithms. Depreciated in the current approach.
+Noted on March. 14, 2020."""
+
+
 import numpy as np
 import pickle
 import pandas as pd

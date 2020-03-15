@@ -2,7 +2,8 @@
 Comments: Modules of the TTDP solver. Each instance of this script represents for a path prediction procedure for a given
 tourist under a set of behavioral parameters.
 Functionality: Receive behavioral parameters and start up solver methods.
-Last modified on Nov. 11. Last modified on Jan. 18.
+- Last modified on Nov. 11.
+- Last modified on Jan. 18.
  """
 
 import numpy as np
@@ -74,7 +75,7 @@ area_centers = {1: [135.8246, 35.095],
 
 fit_params = []
 
-insertion_penalty = 100  # 100 times larger than substitution
+# insertion_penalty = 100  # 100 times larger than substitution
 
 
 def logit(x, a, b, c):  # Logistic B equation from zunzun.com
@@ -512,7 +513,7 @@ def path_penalty(path_obs, path_pdt):
     # compare the distance between the center of observed path and the inserted node as the insertion cost
     center_obs = find_path_center(path_obs)
 
-    insertion_cost = insertion_penalty * np.array(
+    insertion_cost = np.array(
         [haver_dist(*center_obs, *area_centers[_ + 1]) for _ in range(len(Node_list))])
 
     # check empty path
@@ -551,16 +552,17 @@ def path_penalty(path_obs, path_pdt):
         dist[0][col] = dist[0][col - 1] + insertion_cost[path_b[col - 1]]
 
     for col in range(1, cols):
-        for row in range(1, rows):
+        for row in range(1, rows):   # Haversine distance from a to b. In dict node indices start from 1
             deletes = insertion_cost[path_a[row - 1]]
             inserts = insertion_cost[path_b[col - 1]]
-            subs = distance_matrix[path_a[row - 1]][path_b[col - 1]]  # dist from a to b
+            subs = haver_dist(*area_centers[path_a[row - 1] + 1],
+                              *area_centers[path_b[col - 1] + 1])
 
             dist[row][col] = min(dist[row - 1][col] + deletes,
                                  dist[row][col - 1] + inserts,
                                  dist[row - 1][col - 1] + subs)  # substitution
     # balance the result by dividing (insertion_penalty + 1)
-    return dist[row][col] / (insertion_penalty + 1)
+    return dist[row][col]
 
     # TODO case when path length equal
 

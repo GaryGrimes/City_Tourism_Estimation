@@ -1,3 +1,5 @@
+"""Numerical Hessian functionality development."""
+
 import numpy as np
 import numdifftools as nd
 import os, pickle

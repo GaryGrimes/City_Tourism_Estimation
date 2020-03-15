@@ -2217,13 +2217,13 @@ if __name__ == '__main__':
     Solver_ILS.eval_util_print(path_obs)
 
     # %% test path penalty function
-    path_a, path_b = [28, 27, 26, 23, 24, 28], [28, 23, 24, 27, 22, 28]
+    path_observed = [28, 27, 26, 23, 24, 28]
+    path_b = [28, 26, 23, 24, 28]
     path_d = [28, 20, 13, 22, 25, 28]
-    path_c = [28, 22, 23, 24, 23, 28]
 
     # print paths
     print('\nPrint current paths:')
-    tmp = list(path_a)
+    tmp = list(path_observed)
     print('Paht_a:')
     while tmp:
         cur = tmp.pop(0)
@@ -2235,8 +2235,8 @@ if __name__ == '__main__':
         cur = tmp.pop(0)
         print(place_jp.name[cur] + ' -> ', end=' ') if tmp else print(place_jp.name[cur])
 
-    penalty_LD = Solver_ILS.path_penalty(path_a, path_b)
-    penalty_SimGeo = Solver_ILS.geo_dist_penalty(path_a, path_b)
+    penalty_LD = Solver_ILS.path_penalty(path_observed, path_b)
+    penalty_SimGeo = Solver_ILS.geo_dist_penalty(path_observed, path_b)
     print('Penalty modified LD: {:.2f} m, Geo_dist: {} m'.format(penalty_LD, penalty_SimGeo))
 
     # %% Jan.21 solver debug

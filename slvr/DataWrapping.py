@@ -2,7 +2,7 @@
 """
 This script is to generate agent and network data for optimal tour (TTDP) solver. Last modified on Nov. 15.
 Several differences to note:
-1. 因为simulation的结果也是不计算intrazonal movements的，所以在仿真系统内的Data来说，统一将不考虑TAZ内trips，
+1. 因为simulation的结果也是不计算intra-zonal movements的，所以在仿真系统内的Data来说，统一不考虑intra-zonal trips，
 并且将这些trips合并到前一个inter-zonal的trip。 Last modified on Dec. 22.
 2. Outbound visits in observed trip chains are also omitted. Last modified on Dec. 24
 3. Intermediate visits between o and d are restricted for the 37 attraction areas only.
@@ -133,7 +133,7 @@ Intrinsic_utilities = pd.read_excel(os.path.join(os.path.dirname(__file__), 'Dat
                                     sheet_name='data')
 UtilMatrix = []
 for _idx in range(Intrinsic_utilities.shape[0]):
-    temp = np.around(list(Intrinsic_utilities.iloc[_idx, 1:4]), decimals=3)
+    temp = np.around(list(Intrinsic_utilities.iloc[_idx, 2:5]), decimals=3)
     UtilMatrix.append(temp)
 
 # %% edge utility data (time and cost)
@@ -200,12 +200,12 @@ while not NoUpdate:
     if NoUpdate:
         print('Travel distance update complete.')
 
-# %% for each tourist (agent), generate an instance of the class
-toursit_index = ENQ2006['ナンバリング'].values
+# %% Generate an instance of the "Tourist" class for each tourist (agent)
+tourist_index = ENQ2006['ナンバリング'].values
 
 flag = input('Generate and dump agent database? Press anything to continue, [enter] to skip.')
 if flag:
-    # configure pb settings
+    # configure ProgressBar settings
     p = pb.ProgressBar(widgets=[
         ' [', pb.Timer(), '] ',
         pb.Percentage(),
@@ -214,6 +214,7 @@ if flag:
 
     p.start()
     total = ENQ2006.shape[0]
+    # finish ProgressBar settings
 
     agent_database = []
     transit_uid = []
@@ -221,12 +222,16 @@ if flag:
     for count in range(ENQ2006.shape[0]):
         p.update(int((count / (total - 1)) * 100))
 
-        if count % 100 == 0 and count:  # avoid print at 0
+        if count % 500 == 0 and count:  # avoid print at 0
             print('\n----------  Parsing tourist: {} / {} ----------'.format(count, ENQ2006.shape[0]))
         x = Tourist(ENQ2006.loc[count, '整理番号'], ENQ2006.loc[count, 'ナンバリング'])
         trips_df = get_trip_chain(ENQ2006.loc[count, 'ナンバリング'])  # 这个方法好啊
         # get preference
         x.preference = Preference[ENQ2006.loc[count, '整理番号']]
+
+        if x.preference is None:
+            continue
+
         # get o,d and observed path
         if trips_df is None:
             continue
@@ -247,14 +252,29 @@ if flag:
         x.trip_df = trips_df
 
         # modified on Dec. 24
-        _o, _d = path.pop(0), path.pop(-1)
-        inter_path_skip_out_of_bound_visit = [_ for _ in path if _ <= node_num]  # skip visits like 5x. 58 and 99
-        path = [_o] + inter_path_skip_out_of_bound_visit + [_d]
+        _o, _d = path.pop(0), path.pop(-1)  # get origin (first visit) and destination (end visit)
+
+        # visits beyond the 37 areas e.g. 5x. 58 and 99 are skipped
+        intermediate_visits = [_ for _ in path if _ <= node_num]
+
+        # March. 14 2020: replacing the o and d with the first and last attraction visit
+
+        # todo: before: path = [_o] + intermediate_visits + [_d]
+
+        if intermediate_visits:  # not empty
+            path = [intermediate_visits[0]] + intermediate_visits + [intermediate_visits[-1]]
+        else:
+            print('Empty attraction visit at {}'.format(ENQ2006.loc[count, 'ナンバリング']))
+            continue  # empty attraction visit
+
+
+        # save path_obs to the tourist database
         x.path_obs = list(path)
 
         # get time budget
         T_start_h, T_end_h = trips_df['出発時'].iloc[0], trips_df['到着時'].iloc[-1]
         T_start_m, T_end_m = trips_df['出発分'].iloc[0], trips_df['到着分'].iloc[-1]
+
         # autofill start time using travel time matrix
         if not T_start_h:
             # if exists arrival time at the first destination
@@ -297,17 +317,22 @@ if flag:
                 continue
 
         T_start, T_end = T_start_h * 60 + T_start_m, T_end_h * 60 + T_end_m
+
         if T_end < T_start:
             raise ValueError('Time cost error, at {}'.format(ENQ2006.loc[count, 'ナンバリング']))
         else:
             x.time_budget = T_end - T_start
+
+        # append valid user
         agent_database.append(x)
         # record transit user id
         transit_uid.append(ENQ2006.loc[count, 'ナンバリング'])
 
     p.finish()
+
     file = open(os.path.join(os.path.dirname(__file__), 'Database', 'transit_user_database.pickle'), 'wb')
-    # last modifed on Dec. 18. Duplicate users indentified and distinguished by indentical id
+
+    # last modifed on Dec. 18. Duplicate users identified and distinguished by identical id
     pickle.dump(agent_database, file)
 
 """ ok, DATA PREPARATION complete!
@@ -329,12 +354,12 @@ if flag:
     ])
 
     p.start()
-    total = len(toursit_index)
+    total = len(tourist_index)
 
     trip_database = []
     success_uid = []
     fail_uid = []
-    for _idx, Uid in enumerate(toursit_index):
+    for _idx, Uid in enumerate(tourist_index):
         p.update(int((_idx / (total - 1)) * 100))
 
         # Caution: get_trip_chain method will merge a trip with identical od to its previous trip.
