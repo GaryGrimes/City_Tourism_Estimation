@@ -20,6 +20,22 @@ def print_path(path_to_print):
     print(list(np.array(path_to_print) + 1))
 
 
+def penalty2score(*args):
+    if args:
+        _scores = (1 / np.array(args) * 10000) ** 20
+        return _scores
+    else:
+        return []
+
+
+def score2penalty(*args):
+    if args:
+        _penalty = 10000 / (np.array(args) ** (1 / 20))
+        return _penalty
+    else:
+        return []
+
+
 # %% setting up nodes
 node_num = 37  # Number of attractions. Origin and destination are excluded.
 

@@ -75,6 +75,7 @@ area_centers = {1: [135.8246, 35.095],
 
 fit_params = []
 
+
 # insertion_penalty = 100  # 100 times larger than substitution
 
 
@@ -518,6 +519,11 @@ def path_penalty(path_obs, path_pdt):
 
     # check empty path
     path_a, path_b = path_obs[1:-1], path_pdt[1:-1]
+
+    # check the normalized degree of unmatched
+    unmatched = (len(set(path_a) | set(path_b)) - len(set(path_a)) + 1) / (
+            len(set(path_a)) + 1)  # each attraction can be visited only once
+
     if not path_a or not path_b:
         if not path_a and not path_b:  # if all empty
             return 0
@@ -552,7 +558,7 @@ def path_penalty(path_obs, path_pdt):
         dist[0][col] = dist[0][col - 1] + insertion_cost[path_b[col - 1]]
 
     for col in range(1, cols):
-        for row in range(1, rows):   # Haversine distance from a to b. In dict node indices start from 1
+        for row in range(1, rows):  # Haversine distance from a to b. In dict node indices start from 1
             deletes = insertion_cost[path_a[row - 1]]
             inserts = insertion_cost[path_b[col - 1]]
             subs = haver_dist(*area_centers[path_a[row - 1] + 1],
@@ -562,7 +568,7 @@ def path_penalty(path_obs, path_pdt):
                                  dist[row][col - 1] + inserts,
                                  dist[row - 1][col - 1] + subs)  # substitution
     # balance the result by dividing (insertion_penalty + 1)
-    return dist[row][col]
+    return unmatched ** 2 * dist[row][col]  # modified on Mar. 18
 
     # TODO case when path length equal
 

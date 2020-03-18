@@ -46,7 +46,7 @@ plt.title('The diminishing marginal utility')
 plt.show()
 
 # %%
-k, theta = [0.1, 1, 3, 5, 9], [0.1, 0.3, 10, 5, 10]
+k, theta = [0.1, 1, 3, 5, 9], [0.1, 0.3, 10, 0.5, 10]
 lines = []
 
 for i in zip(k, theta):

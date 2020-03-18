@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib
 import pandas as pd
 import os
+import seaborn as sns
 import pylab as pl
 
 # 设置matplotlib正常显示中文和负号
@@ -19,11 +20,10 @@ matplotlib.rcParams['axes.unicode_minus'] = False  # 正常显示负号
 
 if __name__ == '__main__':
     # set filename to read
-    initial_eval_filename = 'Initialization objective values ILS_Gamma.xlsx'  # generated on Jan. 19
+    initial_eval_filename = 'Initialization values GeoDist 03_15.csv'  # generated on Jan. 19
 
-    data = pd.read_excel(
-        os.path.join(os.path.dirname(__file__), 'Evaluation result',
-                     'Jan 20 grid search', initial_eval_filename), index_col=0)
+    data = pd.read_csv(
+        os.path.join(os.path.dirname(__file__), 'Evaluation result', initial_eval_filename), index_col=0)
 
     pnt = data.loc[:, 'penalty']
 
@@ -38,21 +38,82 @@ if __name__ == '__main__':
     plt.title("Parameter Score distribution")
     plt.show()
 
-    # number of parameters
-    num_para = data.shape[1] - 3
-    # a1的score distribution
+    # recover the original parameters
+    """Mar. 15"""
+    range_alpha = [0.003, 0.01, 0.03, 0.1, 0.3, 1]
+    # intercept should >= 50 * alpha
+    range_intercept = [100, 300, 1000]
+    range_shape = [0.1, 0.3, 1, 3, 5]
+    range_scale = [0.2, 0.4, 0.6, 0.8, 1, 3]
 
-    Stats = []
+    Population = np.array(
+        [[i, j, p, q] for i in range_alpha for j in range_intercept
+         for p in range_shape for q in range_scale]
+    )
 
-    for _i in range(num_para):
-        param_name = data.columns[1 + _i]
-        stat_temp = pd.DataFrame(columns=np.sort(data[param_name].unique()))
-        for _idx, _value in enumerate(np.sort(data[param_name].unique())):
-            stat_temp[stat_temp.columns[_idx]] = data['penalty'][data[param_name] == _value].values
+    for _ in range(Population.shape[1]):
+        data[data.columns[_]] = Population[:,_]
 
-        Stats.append(stat_temp)
+    #%% plot
+    for i in data.columns[:4]:
+        sns.boxplot(x=i,y='penalty',data=data)
+        plt.title("{} plot".format(i))
+        plt.show()
 
-    Stats_describe = [_.describe() for _ in Stats]
+    # # number of parameters
+    # num_para = data.shape[1] - 3
+    # # a1的score distribution
+    #
+    # Stats = []
+    #
+    # for _i in range(num_para):
+    #     param_name = data.columns[1 + _i]
+    #     stat_temp = pd.DataFrame(columns=np.sort(data[param_name].unique()))
+    #     for _idx, _value in enumerate(np.sort(data[param_name].unique())):
+    #         stat_temp[stat_temp.columns[_idx]] = data['penalty'][data[param_name] == _value].values
+    #
+    #     Stats.append(stat_temp)
+    #
+    # Stats_describe = [_.describe() for _ in Stats]
+    #
+    # # todo: replace statistics with boxplot or violin plot
+
+    """Backup"""
+    # # set filename to read
+    # initial_eval_filename = 'Initialization objective values ILS_Gamma.xlsx'  # generated on Jan. 19
+    #
+    # data = pd.read_excel(
+    #     os.path.join(os.path.dirname(__file__), 'Evaluation result',
+    #                  'Jan 20 grid search', initial_eval_filename), index_col=0)
+    #
+    # pnt = data.loc[:, 'penalty']
+    #
+    # x_min, x_max = min(pnt), max(pnt)
+    #
+    # plt.hist(pnt, bins=15, facecolor="darkblue", edgecolor="black", alpha=0.7)
+    # # 显示横轴标签
+    # plt.xlabel("Intervals")
+    # # 显示纵轴标签
+    # plt.ylabel("Frequency")
+    # # 显示图标题
+    # plt.title("Parameter Score distribution")
+    # plt.show()
+    #
+    # # number of parameters
+    # num_para = data.shape[1] - 3
+    # # a1的score distribution
+    #
+    # Stats = []
+    #
+    # for _i in range(num_para):
+    #     param_name = data.columns[1 + _i]
+    #     stat_temp = pd.DataFrame(columns=np.sort(data[param_name].unique()))
+    #     for _idx, _value in enumerate(np.sort(data[param_name].unique())):
+    #         stat_temp[stat_temp.columns[_idx]] = data['penalty'][data[param_name] == _value].values
+    #
+    #     Stats.append(stat_temp)
+    #
+    # Stats_describe = [_.describe() for _ in Stats]
 
     # temp = {}
     # temp[]

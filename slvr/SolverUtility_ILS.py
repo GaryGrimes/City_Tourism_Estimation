@@ -2217,8 +2217,10 @@ if __name__ == '__main__':
     Solver_ILS.eval_util_print(path_obs)
 
     # %% test path penalty function
-    path_observed = [28, 27, 26, 23, 24, 28]
-    path_b = [28, 26, 23, 24, 28]
+    path_observed = [40, 28, 27, 26, 23, 24, 39]
+    # path_b = [28, 26, 23, 24, 28]
+    path_b = [40, 28, 27, 26, 23, 28, 39]
+
     path_d = [28, 20, 13, 22, 25, 28]
 
     # print paths
