@@ -45,8 +45,8 @@ plt.legend()
 plt.title('The diminishing marginal utility')
 plt.show()
 
-# %%
-k, theta = [0.1, 1, 3, 5, 9], [0.1, 0.3, 10, 0.5, 10]
+# %% a
+k, theta = [0.1, 1, 3, 5, 9], [0.1, 0.3, 1, 0.5, 10]
 lines = []
 
 for i in zip(k, theta):
@@ -58,6 +58,19 @@ plt.ylim([0, 1])
 plt.legend()
 plt.show()
 
+# %% b
+k, scale = [0.1, 0.3, 1, 3, 10], [0.1, 0.3, 0.7, 1, 3, 10]
+lines = []
+
+for j in k:
+    for i in scale:
+        y = 1 - gamma.cdf(x, a=j, scale=i)
+        plt.plot(x, y, label=(r'$\alpha={}, \beta={:.3f}$'.format(j, 1 / i)))
+
+    plt.xlim([xmin, xmax])
+    plt.ylim([0, 1])
+    plt.legend()
+    plt.show()
 # %% 第二次plot
 
 fig, axes = plt.subplots(3, 1, dpi=150, figsize=(8, 18))

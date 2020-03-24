@@ -499,6 +499,9 @@ def path_penalty(path_obs, path_pdt):
     """Calculates the difference between observed and predicted path in meters.
     Insertion cost is defined as the haversine distance between inserted nodes and the center of observed path."""
 
+    # weight on insertion and deletion. We emphasize on predicting the correct number of visits
+    wi, wd = 3, 10
+
     distance_matrix = Network.dist_mat
     # node indices in path_a and path_b are both standardised, i.e. starting from 0.
     if path_obs[0] != path_pdt[0] or path_obs[-1] != path_pdt[-1]:
@@ -514,15 +517,24 @@ def path_penalty(path_obs, path_pdt):
     # compare the distance between the center of observed path and the inserted node as the insertion cost
     center_obs = find_path_center(path_obs)
 
+    # set the weight to 3. Emphasize the insertion cost
     insertion_cost = np.array(
         [haver_dist(*center_obs, *area_centers[_ + 1]) for _ in range(len(Node_list))])
 
     # check empty path
     path_a, path_b = path_obs[1:-1], path_pdt[1:-1]
 
-    # check the normalized degree of unmatched
-    unmatched = (len(set(path_a) | set(path_b)) - len(set(path_a)) + 1) / (
-            len(set(path_a)) + 1)  # each attraction can be visited only once
+    # check the normalized degree of unmatched (last modified on Mar. 18)
+    unmatched = 0
+    for _i in path_a:
+        if _i not in path_b:
+            unmatched += 1
+
+    # Added intercept: 1.modified on Mar. 20
+    unmatched_degree = (1 + unmatched) / (len(path_a) + 1)
+
+    # unmatched = (len(set(path_a) | set(path_b)) - len(set(path_a)) + 1) / (
+    #         len(set(path_a)) + 1)  # each attraction can be visited only once
 
     if not path_a or not path_b:
         if not path_a and not path_b:  # if all empty
@@ -550,17 +562,17 @@ def path_penalty(path_obs, path_pdt):
 
     # by deletions:
     for row in range(1, rows):
-        dist[row][0] = dist[row - 1][0] + insertion_cost[path_a[row - 1]]
+        dist[row][0] = dist[row - 1][0] + wd * insertion_cost[path_a[row - 1]]
     # target prefixes can be created from an empty source string
 
     # by inserting the characters
     for col in range(1, cols):
-        dist[0][col] = dist[0][col - 1] + insertion_cost[path_b[col - 1]]
+        dist[0][col] = dist[0][col - 1] + wi * insertion_cost[path_b[col - 1]]
 
     for col in range(1, cols):
         for row in range(1, rows):  # Haversine distance from a to b. In dict node indices start from 1
-            deletes = insertion_cost[path_a[row - 1]]
-            inserts = insertion_cost[path_b[col - 1]]
+            deletes = wd * insertion_cost[path_a[row - 1]]
+            inserts = wi * insertion_cost[path_b[col - 1]]
             subs = haver_dist(*area_centers[path_a[row - 1] + 1],
                               *area_centers[path_b[col - 1] + 1])
 
@@ -568,7 +580,7 @@ def path_penalty(path_obs, path_pdt):
                                  dist[row][col - 1] + inserts,
                                  dist[row - 1][col - 1] + subs)  # substitution
     # balance the result by dividing (insertion_penalty + 1)
-    return unmatched ** 2 * dist[row][col]  # modified on Mar. 18
+    return unmatched_degree ** 2 * dist[row][col]  # modified on Mar. 18
 
     # TODO case when path length equal
 

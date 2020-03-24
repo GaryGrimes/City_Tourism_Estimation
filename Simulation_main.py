@@ -354,8 +354,6 @@ def eval_fun_trips_null(para, _dir='', _suf=''):
     # divide population into chunks to initiate multi-processing.
     n_cores = mp.cpu_count()
     pop = chunks(agent_database, n_cores)
-    # for i in pop:
-    #     print(len(i))  # 尽可能平均
 
     jobs = []
     penalty_queue = mp.Queue()  # queue, to save results for multi_processing
@@ -373,7 +371,7 @@ def eval_fun_trips_null(para, _dir='', _suf=''):
                       'cost_matrix': edge_cost_matrix,
                       'dwell_matrix': dwell_vector,
                       'dist_matrix': edge_distance_matrix}
-        # todo: send _dir and _suf into process, to dump trip matrix and travel patterns
+
         process = mp.Process(target=SolverUtility.solver_trip_stat_null,
                              args=(penalty_queue, idx, node_num, chunk, _dir, _suf),
                              kwargs=data_input, name='P{}'.format(idx + 1))
@@ -491,11 +489,11 @@ def parse_node_visit(_chains: list):
     areas are included for summation. Input: a list of all trip chains with indices starting from 0. """
     visit_frequency = np.zeros(node_num)
 
-    for _ in _chains:
-        for visit in _:
+    for _ in _chains:  # for each trip chain
+        for visit in _[1:-1]:  # ignore the origin and destination
             try:
                 visit_frequency[visit] += 1
-            except IndexError:
+            except IndexError:  # node does not belong to any attraction area
                 pass
     return visit_frequency
 
@@ -535,6 +533,7 @@ def compare_node_visit(_obs_trip_chains, _pdt_trip_chains):
     # ax.set_yticks([1, 5, 20, 50, 100, 200, 500, 1000])
     # ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
     ax.set_ylim(0, 1800)
+
     def autolabel(rects):
         """Attach a text label above each bar in *rects*, displaying its height."""
         for rect in rects:
@@ -983,7 +982,7 @@ if __name__ == '__main__':
         print('Test penalty for beta* :', test_obj)
 
     # %% statistics of interest
-    enumerated_usrs, obs_trip_matrix = parse_observed_trips(agent_database)
+    enumerated_usrs, obs_trip_matrix = parse_observed_trips(agent_database)  # depreciated
     obs_trip_chains = []
     for _ in agent_database:
         if _.preference is None or _.path_obs is None:
@@ -992,14 +991,17 @@ if __name__ == '__main__':
         if len(_.path_obs) < 3:
             continue
         obs_trip_chains.append(list(np.array(_.path_obs) - 1))
-    # observed trip tables 要不要scaled to the whole population's size?
-    write_flag = 0
-    if write_flag:
-        pd.DataFrame(obs_trip_matrix).to_excel(
-            'Project Database/Simulation Statistics/Observed trip frequency (PT only).xlsx')
+
+    # write_flag = 0
+    # if write_flag:
+    #     pd.DataFrame(obs_trip_matrix).to_excel(
+    #         'Project Database/Simulation Statistics/Observed trip frequency (PT only).xlsx')
 
     # %%  predicted trip tables
-    s_opt = [0.006729682, 393.7222513, 0.859129711, 0.390907255]
+    # s_opt = [0.006729682, 393.7222513, 0.859129711, 0.390907255]
+
+    # Mar. 21
+    s_opt = [0.108870387, 103.7725994, 3, 1]
     s_null = [0, s_opt[1], 0, 0]
 
     pdt_trip_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp')
@@ -1010,14 +1012,15 @@ if __name__ == '__main__':
     predicted_trip_matrix = parse_trip_matrix(pdt_trip_dir, '')  # suffix is ''. no suffix
     predicted_trip_chains = parse_trip_pattern(pdt_trip_dir, '')
 
-    write_flag = 0
-    today = datetime.date.today().strftime('%m_%d')
-    filename = 'Predicted trip table {}.xlsx'.format(today)
-    if write_flag:
-        pd.DataFrame(predicted_trip_matrix).to_excel(
-            'Evaluation result/TDM simulation/{}'.format(filename))
-
-    error_trip_table = predicted_trip_matrix - obs_trip_matrix
+    """Trip matrix comparison depreciated"""
+    # write_flag = 0
+    # today = datetime.date.today().strftime('%m_%d')
+    # filename = 'Predicted trip table {}.xlsx'.format(today)
+    # if write_flag:
+    #     pd.DataFrame(predicted_trip_matrix).to_excel(
+    #         'Evaluation result/TDM simulation/{}'.format(filename))
+    #
+    # error_trip_table = predicted_trip_matrix - obs_trip_matrix
     # error_trip_percentage = (predicted_trip_tables - obs_trip_table) / obs_trip_table
 
     # draw comparison between observed and predicted node visit frequencies

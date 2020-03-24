@@ -128,11 +128,11 @@ if __name__ == '__main__':
     # range_scale = [0.2, 0.4, 0.6, 0.8, 1, 2, 5]
 
     """Mar. 15"""
-    range_alpha = [0.003, 0.01, 0.03, 0.1, 0.3, 1]
+    range_alpha = [0.01, 0.03, 0.1, 0.3]
     # intercept should be more than 50 times of alpha
-    range_intercept = [100, 300, 1000]
-    range_shape = [0.1, 0.3, 1, 3, 5]
-    range_scale = [0.2, 0.4, 0.6, 0.8, 1, 3]
+    range_intercept = [1, 10, 30, 100, 300, 1000]
+    range_shape = [0.1, 0.3, 1, 3]
+    range_scale = [0.1, 0.3, 1, 3, 10]
 
 
     # %% generate population
@@ -165,6 +165,7 @@ if __name__ == '__main__':
             pg_curr = pg_total - len(Population) + core_process
             cur_progress = int(pg_curr / (pg_total - 1)) * 100
             progress.update(cur_progress)
+            print("Current progress: {}%".format(cur_progress))
         except:
             pass
 

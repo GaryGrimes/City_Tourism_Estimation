@@ -20,7 +20,7 @@ matplotlib.rcParams['axes.unicode_minus'] = False  # 正常显示负号
 
 if __name__ == '__main__':
     # set filename to read
-    initial_eval_filename = 'Initialization values GeoDist 03_15.csv'  # generated on Jan. 19
+    initial_eval_filename = 'Initialization values GeoDist 03_20.csv'
 
     data = pd.read_csv(
         os.path.join(os.path.dirname(__file__), 'Evaluation result', initial_eval_filename), index_col=0)
@@ -38,13 +38,35 @@ if __name__ == '__main__':
     plt.title("Parameter Score distribution")
     plt.show()
 
-    # recover the original parameters
-    """Mar. 15"""
-    range_alpha = [0.003, 0.01, 0.03, 0.1, 0.3, 1]
-    # intercept should >= 50 * alpha
-    range_intercept = [100, 300, 1000]
-    range_shape = [0.1, 0.3, 1, 3, 5]
-    range_scale = [0.2, 0.4, 0.6, 0.8, 1, 3]
+    # # recover the original parameters
+    # """Mar. 15"""
+    # range_alpha = [0.003, 0.01, 0.03, 0.1, 0.3, 1]
+    # # intercept should >= 50 * alpha
+    # range_intercept = [100, 300, 1000]
+    # range_shape = [0.1, 0.3, 1, 3, 5]
+    # range_scale = [0.2, 0.4, 0.6, 0.8, 1, 3]
+
+    # """Mar. 18"""
+    # range_alpha = [0.003, 0.01, 0.03, 0.1, 0.3, 1]
+    # # intercept should be more than 50 times of alpha
+    # range_intercept = [100, 300, 1000]
+    # range_shape = [0.1, 0.3, 1, 3, 5]
+    # range_scale = [0.2, 0.4, 0.6, 0.8, 1, 3]
+
+    # """Mar. 19"""
+    # range_alpha = [0.003, 0.01, 0.03, 0.1, 0.3, 1]
+    # # intercept should be more than 50 times of alpha
+    # range_intercept = [10, 30]
+    # range_shape = [0.1, 0.3, 1, 3, 5]
+    # range_scale = [0.2, 0.4, 0.6, 0.8, 1, 3]
+
+    """Mar. 20"""
+    range_alpha = [0.01, 0.03, 0.1, 0.3]
+    # intercept should be more than 50 times of alpha
+    range_intercept = [1, 10, 30, 100, 300, 1000]
+    range_shape = [0.1, 0.3, 1, 3]
+    range_scale = [0.1, 0.3, 1, 3, 10]
+
 
     Population = np.array(
         [[i, j, p, q] for i in range_alpha for j in range_intercept

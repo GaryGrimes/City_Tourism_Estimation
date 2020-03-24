@@ -307,7 +307,8 @@ if __name__ == '__main__':
 
     # 'Evolution Strategy' parameter setup
     DNA_SIZE = 4  # DNA (real number)
-    DNA_BOUND = [[0, 0.1], [0, 700], [0, 7], [0, 3]]  # solution upper and lower bounds
+    # DNA_BOUND = [[0, 0.1], [0, 700], [0, 7], [0, 3]]  # solution upper and lower bounds
+    DNA_BOUND = [[0, 0.1], [0, 300], [0, 3], [0, 5]]  # solution upper and lower bounds
     N_GENERATIONS = 200
     POP_SIZE = 12  # population size (each individual in current generation is a vector of behavioral parameters)
     N_KID = 12  # n kids per generation
@@ -318,13 +319,11 @@ if __name__ == '__main__':
     y_mean, y_max, x_max, gnr_max = [], [], [], []  # 记录平均score, 每一世代max score， 每世代最佳个体
     # generate first population
 
-    # generate first population. s = []  # species set of parameters
-    # parameter = [-0.05, -0.05, 0.03, 0.1]
-    # s = [[]]  # todo initialize s with good results in initialization evaluation
+    """Ignore the filename. Based on modified Levenshtein distance with the degree of mismatch and weighted insertion
+    and deletion cost."""
+    initial_eval_filename = 'Initialization values GeoDist 03_20.csv'  # Mar. 21
 
-    initial_eval_filename = 'Initialization values final 01_29.xlsx'  # generated on Jan. 10
-
-    initial_eval_res = pd.read_excel(
+    initial_eval_res = pd.read_csv(
         os.path.join(os.path.dirname(__file__), 'Evaluation result', initial_eval_filename), index_col=0)
 
     # sort values by penalty
@@ -372,8 +371,8 @@ if __name__ == '__main__':
         with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', 'EvoStrategy', filename_itrres),
                   'a', newline='') as csvFile:
             iteration_penalty, record_penalty = score2penalty(Best_score)[0], score2penalty(para_record)[0]
-            add_info = [iteration] + s[np.argsort(SCORES)[-1]] + [iteration_penalty] + [Best_score] + [
-                record_penalty], [para_record] + [np.mean(SCORES)]
+            add_info = [iteration] + x_max[-1] + [iteration_penalty] + [Best_score] + [
+                record_penalty] + [para_record] + [np.mean(SCORES)]
             writer = csv.writer(csvFile)
             writer.writerow(add_info)
 

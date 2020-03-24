@@ -374,19 +374,19 @@ if __name__ == '__main__':
         y_max.append(para_record)
         x_max.append(s[np.argsort(SCORES)[-1]])  # pick the last one with highest score. x_max
 
-        # mutation to produce next generation
-        s = mutation_new(prob_mut, para_record, s, SCORES,
-                         boundaries=bounds)  # mutation generates (inn + insertion size) individuals
-
-        """write iteration results"""
+        # write iteration results into csv file
 
         with open(os.path.join(os.path.dirname(__file__), 'Evaluation result', 'RandomGA', filename_itrres),
                   'a', newline='') as csvFile:
             iteration_penalty, record_penalty = score2penalty(Best_score)[0], score2penalty(para_record)[0]
             add_info = [iteration] + s[np.argsort(SCORES)[-1]] + [iteration_penalty] + [Best_score] + [
-                record_penalty], [para_record] + [np.mean(SCORES)]
+                record_penalty] + [para_record] + [np.mean(SCORES)]
             writer = csv.writer(csvFile)
             writer.writerow(add_info)
+
+        # mutation to produce next generation
+        s = mutation_new(prob_mut, para_record, s, SCORES,
+                         boundaries=bounds)  # mutation generates (inn + insertion size) individuals
 
         # print('\nMutated parameters(individuals) for iteration {}: '.format(iteration + 1))
         # for i in range(len(s)):

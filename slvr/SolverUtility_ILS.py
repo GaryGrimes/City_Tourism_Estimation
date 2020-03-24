@@ -2142,8 +2142,20 @@ if __name__ == '__main__':
     # alpha = -5.392
     # beta = {'intercept': 8.819, 'shape': 3.855, 'scale': 0.989}
 
-    alpha = 0.006729682
-    beta = {'intercept': 393.7222513, 'shape': 0.859129711, 'scale': 0.390907255}
+    # alpha = 0.006729682
+    # beta = {'intercept': 393.7222513, 'shape': 0.859129711, 'scale': 0.390907255}
+
+    # # Mar. 19, 2020
+    # alpha = 0.019937494
+    # beta = {'intercept': 102.4778354, 'shape': 3, 'scale': 0.2}
+
+    # Mar. 20, 2020
+    # alpha = 0.003259006
+    # beta = {'intercept': 26.11249266, 'shape': 3, 'scale': 0.2}
+
+    # Mar. 21, 2020
+    alpha = 0.108870387
+    beta = {'intercept': 103.7725994, 'shape': 3, 'scale': 1}
 
     # pref = [0.5, 0.3, 0.2]  # just for test
 
@@ -2217,9 +2229,12 @@ if __name__ == '__main__':
     Solver_ILS.eval_util_print(path_obs)
 
     # %% test path penalty function
-    path_observed = [40, 28, 27, 26, 23, 24, 39]
+    # path_observed = [40, 28, 27, 26, 23, 24, 39]
+    path_observed = [40, 28, 25, 24, 39]
+
     # path_b = [28, 26, 23, 24, 28]
-    path_b = [40, 28, 27, 26, 23, 28, 39]
+    # path_b = [40, 28, 27, 26, 23, 28, 39]
+    path_b = [40, 28, 24, 25, 39]
 
     path_d = [28, 20, 13, 22, 25, 28]
 
