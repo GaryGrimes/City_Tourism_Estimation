@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Awesome-pyecharts</title>
+            <script type="text/javascript" src="https://assets.pyecharts.org/assets/echarts.min.js"></script>
+
+</head>
+<body>
+    <div id="8c27a80d6fb74afab947d6369f3a9b28" class="chart-container" style="width:900px; height:500px;"></div>
+    <script>
+        var chart_8c27a80d6fb74afab947d6369f3a9b28 = echarts.init(
+            document.getElementById('8c27a80d6fb74afab947d6369f3a9b28'), 'white', {renderer: 'canvas'});
+        var option_8c27a80d6fb74afab947d6369f3a9b28 = {
+    "animation": true,
+    "animationThreshold": 2000,
+    "animationDuration": 1000,
+    "animationEasing": "cubicOut",
+    "animationDelay": 0,
+    "animationDurationUpdate": 300,
+    "animationEasingUpdate": "cubicOut",
+    "animationDelayUpdate": 0,
+    "color": [
+        "#c23531",
+        "#2f4554",
+        "#61a0a8",
+        "#d48265",
+        "#749f83",
+        "#ca8622",
+        "#bda29a",
+        "#6e7074",
+        "#546570",
+        "#c4ccd3",
+        "#f05b72",
+        "#ef5b9c",
+        "#f47920",
+        "#905a3d",
+        "#fab27b",
+        "#2a5caa",
+        "#444693",
+        "#726930",
+        "#b2d235",
+        "#6d8346",
+        "#ac6767",
+        "#1d953f",
+        "#6950a1",
+        "#918597"
+    ],
+    "series": [
+        {
+            "type": "sankey",
+            "name": "Number of trips",
+            "data": [
+                {
+                    "name": "\u5d50\u5c71\u65b9\u9762_\u767a"
+                },
+                {
+                    "name": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762_\u7740"
+                },
+                {
+                    "name": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-"
+                },
+                {
+                    "name": "\u5d6f\u5ce8\u91ce\u65b9\u9762_\u767a"
+                },
+                {
+                    "name": "\u4e8c\u6761\u57ce\u5468\u8fba_\u767a"
+                },
+                {
+                    "name": "\u4e09\u5341\u4e09\u9593\u5802\u5468\u8fba_\u7740"
+                },
+                {
+                    "name": "Others_\u7740"
+                },
+                {
+                    "name": "\u4e8c\u6761\u57ce\u5468\u8fba_\u7740"
+                },
+                {
+                    "name": "\u7947\u5712\u65b9\u9762_\u7740"
+                },
+                {
+                    "name": "\u918d\u9190\u5bfa\u5468\u8fba_\u7740"
+                },
+                {
+                    "name": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)"
+                },
+                {
+                    "name": "Others_\u767a"
+                },
+                {
+                    "name": "\u4e0b\u9d28\u795e\u793e\u5468\u8fba_\u7740"
+                },
+                {
+                    "name": "\u4e0b\u9d28\u795e\u793e\u5468\u8fba_\u767a"
+                },
+                {
+                    "name": "\u4eac\u90fd\u99c5\u5468\u8fba_\u7740"
+                },
+                {
+                    "name": "\u5e73\u5b89\u795e\u5bae\u5468\u8fba_\u7740"
+                },
+                {
+                    "name": "\u4eac\u90fd\u99c5\u5468\u8fba_\u767a"
+                },
+                {
+                    "name": "\u4e09\u5341\u4e09\u9593\u5802\u5468\u8fba_\u767a"
+                },
+                {
+                    "name": "\u7947\u5712\u65b9\u9762_\u767a"
+                }
+            ],
+            "links": [
+                {
+                    "source": "\u7947\u5712\u65b9\u9762_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "value": 191
+                },
+                {
+                    "source": "\u4eac\u90fd\u99c5\u5468\u8fba_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "value": 68
+                },
+                {
+                    "source": "\u4e0b\u9d28\u795e\u793e\u5468\u8fba_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "value": 44
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "value": 31
+                },
+                {
+                    "source": "\u5d50\u5c71\u65b9\u9762_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "value": 22
+                },
+                {
+                    "source": "\u4e8c\u6761\u57ce\u5468\u8fba_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "value": 19
+                },
+                {
+                    "source": "\u4e09\u5341\u4e09\u9593\u5802\u5468\u8fba_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "value": 18
+                },
+                {
+                    "source": "Others_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "value": 23
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762_\u7740",
+                    "value": 238
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "target": "\u7947\u5712\u65b9\u9762_\u7740",
+                    "value": 163
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "target": "\u4eac\u90fd\u99c5\u5468\u8fba_\u7740",
+                    "value": 109
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "target": "\u4e09\u5341\u4e09\u9593\u5802\u5468\u8fba_\u7740",
+                    "value": 13
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "target": "\u4e0b\u9d28\u795e\u793e\u5468\u8fba_\u7740",
+                    "value": 8
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "target": "\u5e73\u5b89\u795e\u5bae\u5468\u8fba_\u7740",
+                    "value": 7
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "target": "\u4e8c\u6761\u57ce\u5468\u8fba_\u7740",
+                    "value": 6
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762-",
+                    "target": "Others_\u7740",
+                    "value": 23
+                },
+                {
+                    "source": "\u7947\u5712\u65b9\u9762_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "value": 180
+                },
+                {
+                    "source": "\u4eac\u90fd\u99c5\u5468\u8fba_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "value": 67
+                },
+                {
+                    "source": "\u4e0b\u9d28\u795e\u793e\u5468\u8fba_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "value": 36
+                },
+                {
+                    "source": "\u5d6f\u5ce8\u91ce\u65b9\u9762_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "value": 35
+                },
+                {
+                    "source": "\u4e09\u5341\u4e09\u9593\u5802\u5468\u8fba_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "value": 24
+                },
+                {
+                    "source": "\u4e8c\u6761\u57ce\u5468\u8fba_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "value": 18
+                },
+                {
+                    "source": "\u5d50\u5c71\u65b9\u9762_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "value": 16
+                },
+                {
+                    "source": "Others_\u767a",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "value": 27
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "target": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762_\u7740",
+                    "value": 238
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "target": "\u7947\u5712\u65b9\u9762_\u7740",
+                    "value": 163
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "target": "\u4eac\u90fd\u99c5\u5468\u8fba_\u7740",
+                    "value": 94
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "target": "\u4e09\u5341\u4e09\u9593\u5802\u5468\u8fba_\u7740",
+                    "value": 10
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "target": "\u4e8c\u6761\u57ce\u5468\u8fba_\u7740",
+                    "value": 6
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "target": "\u5e73\u5b89\u795e\u5bae\u5468\u8fba_\u7740",
+                    "value": 5
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "target": "\u918d\u9190\u5bfa\u5468\u8fba_\u7740",
+                    "value": 5
+                },
+                {
+                    "source": "\u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762+(TDM)",
+                    "target": "Others_\u7740",
+                    "value": 27
+                }
+            ],
+            "left": "5%",
+            "top": "5%",
+            "right": "20%",
+            "bottom": "5%",
+            "nodeWidth": 20,
+            "nodeGap": 8,
+            "nodeAlign": "justify",
+            "layoutIteration": 32,
+            "orient": "horizontal",
+            "draggable": true,
+            "focusNodeAdjacency": false,
+            "label": {
+                "show": true,
+                "position": "right",
+                "margin": 8
+            },
+            "lineStyle": {
+                "width": 1,
+                "opacity": 0.2,
+                "curveness": 0.5,
+                "type": "dotted",
+                "color": "source"
+            }
+        }
+    ],
+    "legend": [
+        {
+            "data": [
+                "Number of trips"
+            ],
+            "selected": {
+                "Number of trips": true
+            },
+            "show": true,
+            "padding": 5,
+            "itemGap": 10,
+            "itemWidth": 25,
+            "itemHeight": 14
+        }
+    ],
+    "tooltip": {
+        "show": true,
+        "trigger": "item",
+        "triggerOn": "mousemove|click",
+        "axisPointer": {
+            "type": "line"
+        },
+        "textStyle": {
+            "fontSize": 14
+        },
+        "borderWidth": 0
+    },
+    "title": [
+        {
+            "text": "A Sankey Diagram of Node \u6cb3\u539f\u753a\u30fb\u65b0\u4eac\u6975\u65b9\u9762",
+            "padding": 5,
+            "itemGap": 10
+        }
+    ]
+};
+        chart_8c27a80d6fb74afab947d6369f3a9b28.setOption(option_8c27a80d6fb74afab947d6369f3a9b28);
+    </script>
+</body>
+</html>

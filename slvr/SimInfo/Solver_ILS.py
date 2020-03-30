@@ -292,7 +292,10 @@ def comp_fill():
     distance, benefit = [], []
     for _i in range(Network.node_num):
         # cost = Network.time_mat[o, _i] + Network.time_mat[_i, d] + Network.dwell_vec[_i]
-        cost = abs(arc_util_callback(o, _i) + arc_util_callback(_i, d))
+        if o == d == _i:
+            cost = 0.00001
+        else:
+            cost = abs(arc_util_callback(o, _i) + arc_util_callback(_i, d))  # cost have positive value
         distance.append(cost)
 
         _benefit = np.dot(Agent.pref, Network.util_mat[_i]) / cost

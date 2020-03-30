@@ -532,7 +532,7 @@ def compare_node_visit(_obs_trip_chains, _pdt_trip_chains):
     # # ax.set_yticks([0, 5, 10, 20, 50, 100, 200, 500, 1000])
     # ax.set_yticks([1, 5, 20, 50, 100, 200, 500, 1000])
     # ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-    ax.set_ylim(0, 1800)
+    ax.set_ylim(0, 1000)
 
     def autolabel(rects):
         """Attach a text label above each bar in *rects*, displaying its height."""
@@ -615,6 +615,96 @@ def compare_region_visit(_obs_trip_chains, _pdt_trip_chains):
 
     # autolabel(rects1)  # display values on bars
     # autolabel(rects2)
+    # plt.xticks(rotation=75)
+
+    plt.grid(True, which='both', axis='y', linestyle="-.", linewidth=0.5)
+    plt.tight_layout()
+    plt.show()
+
+    pass
+
+
+def compare_region_visit_multiple_bars(trip_chains: list, bar_names: list):
+    """
+    For grouped bar plot, see:
+    # https://matplotlib.org/gallery/lines_bars_and_markers/barchart.html#sphx-glr-gallery-lines-bars-and-markers-barchart-py
+    """
+    # todo: modify with greyscale three-bar plots
+
+    if not len(trip_chains) == len(bar_names):
+        return "+++ Input error. Check the numebr of entries..."
+
+    reference_idx = 0  # sort by which trip chain? default is the observed trip chain of which the idx is zero
+    place_labels_jp = list(region_names)  # make a copy
+
+    res_visit_frequency = []
+    for _n, trip_chain_table in enumerate(trip_chains):
+
+        node_visits = parse_node_visit(trip_chain_table)
+
+        region_visits = np.zeros(len(region_names))
+        for _idx, _ in enumerate(node_visits):
+            region_visits[area_region_dict[_idx]] += _
+
+        visits_sorted, idx_sorted = np.sort(region_visits)[::-1], np.argsort(region_visits)[::-1]
+        res_visit_frequency.append(visits_sorted)
+        if _n == reference_idx:
+            place_labels_jp = [region_names[_] for _ in idx_sorted]
+
+    for _idx, _ in enumerate(res_visit_frequency):
+        if _idx == reference_idx:
+            continue
+        print("+++  Comparison between reference and {}: ".format(bar_names))
+        error = np.abs(res_visit_frequency[reference_idx] - _)
+        print('+++  total number of visit: observed {}, predicted {}, mean error {} \n'.format(
+            sum(res_visit_frequency[reference_idx]), sum(_), np.average(np.average(error))))
+
+    x = np.arange(len(place_labels_jp))  # the label locations
+
+    bar_cnt = len(bar_names)
+    width = (1 - 0.2) / bar_cnt  # the width of the bars
+
+    fig_wide = 10
+
+    # fig, ax1 = plt.subplots(figsize=(fig_wide, fig_wide / (math.sqrt(2) * 1.25)), dpi=400)
+    fig, ax1 = plt.subplots(dpi=200)
+    # plt.xticks(rotation=75)
+
+    rects = []
+    color_range = ['#96ceb4', '#ffcc5c', '#ff6f69']
+    for _ in range(bar_cnt):
+        i, n = _ + 1, bar_cnt
+        loc = x + (i - 1 / 2 * (n + 1)) * width
+        # rects.append(ax1.bar(loc, data_to_plot[_], width, label=stg_names[_], alpha=0.6))
+
+        rects.append(ax1.bar(loc, res_visit_frequency[_], width, label=bar_names[_], color=color_range[_], alpha=0.9))
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax1.set_ylabel('Visit frequency')
+    ax1.set_xlabel('Region names')
+    # ax.set_title('Visit frequency of places (before and after)')
+    ax1.set_xticks(x)
+    ax1.set_xlim(-1, len(place_labels_jp))
+    ax1.set_xticklabels(place_labels_jp, rotation=75, ha='right')
+    ax1.legend()
+
+    # ax.set_yscale('log')
+    # # ax.set_yticks([0, 5, 10, 20, 50, 100, 200, 500, 1000])
+    # ax.set_yticks([1, 5, 20, 50, 100, 200, 500, 1000])
+    # ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+
+    def autolabel(rects):
+        """Attach a text label above each bar in *rects*, displaying its height."""
+        for rect in rects:
+            height = rect.get_height()
+            ax1.annotate('{}'.format(height),
+                         xy=(rect.get_x() + rect.get_width() / 2, height),
+                         xytext=(0, 3),  # 3 points vertical offset
+                         textcoords="offset points",
+                         ha='center', va='bottom')
+
+    # for _ in rects:
+    #     autolabel(_)  # display values on bars
     # plt.xticks(rotation=75)
 
     plt.grid(True, which='both', axis='y', linestyle="-.", linewidth=0.5)
@@ -1000,8 +1090,9 @@ if __name__ == '__main__':
     # %%  predicted trip tables
     # s_opt = [0.006729682, 393.7222513, 0.859129711, 0.390907255]
 
-    # Mar. 21
-    s_opt = [0.108870387, 103.7725994, 3, 1]
+    # Mar. 24 (near 120 itr.s)
+    s_opt = [0.044, 135.488, 0.550, 1.788]
+
     s_null = [0, s_opt[1], 0, 0]
 
     pdt_trip_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp')
@@ -1055,6 +1146,8 @@ if __name__ == '__main__':
     trip_temp_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp', 'time')  # directory
 
     effect = 0.2
+    # time_targets = [(27, 23), (14, 22), (28, 26), (14, 15, 16, 23), (28, 27), (13, 24)]
+
     time_targets = [(27, 23), (14, 22), (28, 26), (14, 15, 16, 23), (28, 27), (13, 24)]
 
     # time_targets = [(27, 23), (14, 22), (28, 26)]
@@ -1140,25 +1233,24 @@ if __name__ == '__main__':
     if _create_df:
         res_df = parse_tripchain_df(predicted_df, *tdm_node_dfs)
         # res_df.to_excel('Comparison of tdm strategies node (updated).xlsx')
-    # %% Sankey diagram for attraction area of interest
+    # %% Sankey diagrams: compare between the predicted and observed
 
     # sankey(predicted_trip_chains['raw'], n - 1, place_jp)
-    # compare between the predicted and observed
+    print("\nCompare between the predicted and observed in Sankey diagrams")
     try:
         while True:
-            n = int(input('Please input the attraction index, starting from 1. E.g. node 1: 1:\n'))
+            n = int(input('  Please input the attraction index, starting from 1. E.g. node 1: 1:\n'))
             sk.sankey_echart_comparison(obs_trip_chains, predicted_trip_chains['raw'], n - 1, place_jp)
 
     except ValueError or IndexError:
         pass  # 有错误就直接pass了
 
     # %% compare between the base and improved predicted result
+
     stg_dfs = [tdm_edge_res[0]['trip_chains']['raw'],
-               tdm_edge_res[3]['trip_chains']['raw'],
-               tdm_node_res[1]['trip_chains']['raw'],
-               tdm_node_res[3]['trip_chains']['raw']
+               tdm_node_res[0]['trip_chains']['raw'],
                ]
-    stg_names = ['Edge1', 'Edge 4', 'Node 2', 'Node 4']
+    stg_names = ['Edge1', 'Node 1']
 
     for _, new in enumerate(stg_dfs):
         print('\nCompare effects of strategy {}'.format(stg_names[_]))
@@ -1205,9 +1297,6 @@ if __name__ == '__main__':
         for _node in region_areas[idx]:
             area_region_dict[int(_node) - 1] = idx
 
-    region_compare_plot = 1
-    if region_compare_plot:
-        compare_region_visit(obs_trip_chains, predicted_trip_chains['raw'])
     # %% histogram of total visited attractions
 
     null_trip_dir = os.path.join(os.path.dirname(__file__), 'slvr', 'SimInfo', 'temp', 'null')
@@ -1217,6 +1306,17 @@ if __name__ == '__main__':
 
     null_trip_matrix = parse_trip_matrix(null_trip_dir, '')  # suffix is ''. no suffix
     null_trip_chains = parse_trip_pattern(null_trip_dir, '')
+
+    # draw comparison between observed and predicted node visit frequencies
+    compare_plot = 1
+    if compare_plot:
+        compare_node_visit(obs_trip_chains, null_trip_chains['raw'])
+
+    region_compare_plot = 1
+    if region_compare_plot:
+        compare_region_visit_multiple_bars(
+            [obs_trip_chains, predicted_trip_chains['raw'], null_trip_chains['raw']],
+            ["Observed", "Predicted", "Zero case"])
 
     if input('\nPlot histogram of total visited attractions?'):
         visited_cnt = []

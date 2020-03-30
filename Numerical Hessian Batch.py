@@ -302,9 +302,9 @@ if __name__ == '__main__':
     # numerical gradient using * parameter
     # s = [0.006729682, 393.7222513, 0.859129711, 0.390907255]  # Feb. 2
 
-    s = [0.100, 700.000, 0.367, 0.400]  # Feb. 9 ES
+    # s = [0.100, 700.000, 0.367, 0.400]  # Feb. 9 ES
 
-    s1 = [0.008162314, 392.3767281, 0.933196936, 0.348740611]
+    s = [0.047077089, 131.3661915, 0.529121608, 2.100995628]  # Mar. 26 ES
 
     # current near optimal after grid search (Jan. 9)
     near_optimal = [0.027327872, 327.960607, 1, 0.4]
@@ -324,7 +324,7 @@ if __name__ == '__main__':
     # calculate evaluation time
     if input('Evaluate the near optimal?'):
         start_time = datetime.datetime.now()
-        res = eval_fun(s1)
+        res = eval_fun(near_optimal)
         print('Penalty for near optimal: {}'.format(res))
         end_time = datetime.datetime.now()
         print('------ Evaluation time: {}s ------\n'.format((end_time - start_time).seconds))

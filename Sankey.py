@@ -273,7 +273,7 @@ def sankey_echart_comparison(base_df, new_df, target_node_idx, place_labels_jp, 
             place_labels_jp[target_node_idx])))
     )
     # output visualization by html file
-    _res.render('Sankey plot compare/result_{}.html'.format(place_labels_jp[target_node_idx]))
+    _res.render('Evaluation result/Illustrations/Sankey plot compare/result_{}.html'.format(place_labels_jp[target_node_idx]))
     # make_snapshot(driver, _res.render(), "Sankey plot compare/A Sankey Diagram of Node {}.png".format(
     #     place_labels_jp[target_node_idx]))
 
@@ -436,11 +436,12 @@ def sankey_echart_strategy(base_df, new_df, target_node_idx, place_labels_jp, st
             place_labels_jp[target_node_idx])))
     )
     # output visualization by html file
-    _res.render('Sankey plot compare/TDM_{}_at_{}.html'.format(stg_name, place_labels_jp[target_node_idx]))
+    _res.render('Evaluation result\Illustrations\Sankey plot compare\TDM_{}_at_{}.html'.format(stg_name, place_labels_jp[target_node_idx]))
     # make_snapshot(driver, _res.render(), "Sankey plot compare/A Sankey Diagram of Node {}.png".format(
     #     place_labels_jp[target_node_idx]))
 
     print('Compared strategy effect at node {}'.format(place_labels_jp[target_node_idx]))
+
 
 def sankey_base(n=None, l=None) -> Sankey:
     if n:
